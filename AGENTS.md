@@ -22,6 +22,7 @@ task migrate      # apply D1 migrations locally
 ## Constraints (binding)
 
 - Prefer minimal, pragmatic solutions; avoid over-engineering.
+- No manual line wrapping at a fixed column in any file unless a configured linter enforces it.
 - D1 binding named `DB`; raw-SQL migrations in `api/migrations/`, keep SQL portable — no Postgres-isms. Free limits are hard walls: 100k req/day, 10ms CPU, 5M D1 row-reads/day.
 - Vite SPA with layout persistence (uninterrupted audio). TanStack Query for server state, Zustand for client UI state only. No Redux.
 - Tailwind CSS v4, 90s DIY Zine Brutalism.

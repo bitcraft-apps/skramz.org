@@ -30,3 +30,7 @@ web/.wrangler/
 
 # pnpm
 .pnpm-store
+
+# Playwright
+.playwright-profile/
+.playwright-cli/
