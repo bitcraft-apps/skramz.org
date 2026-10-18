@@ -47,6 +47,21 @@ tasks:
     dir: api
     cmd: pnpm exec wrangler d1 migrations apply DB --remote
 
+  seed:
+    desc: Apply a seed file to local D1, then fail on any _verify.sql row (usage task seed SEED=<file.sql>)
+    dir: api
+    cmds:
+      - |
+        if [ -z "{{.SEED}}" ]; then echo "usage: task seed SEED=<file.sql>" >&2; exit 2; fi
+        case "{{.SEED}}" in
+          */*|*..*) echo "refusing SEED with path separator or ..: use a basename like band.sql" >&2; exit 2;;
+          *.sql) ;;
+          *) echo "refusing SEED without .sql suffix" >&2; exit 2;;
+        esac
+        pnpm exec wrangler d1 execute DB --local --file="seeds/{{.SEED}}"
+        OUT=$(pnpm exec wrangler d1 execute DB --local --json --file=seeds/_verify.sql)
+        echo "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const rows=JSON.parse(s).flatMap(x=>x.results||[]);if(rows.length){for(const r of rows)console.log(JSON.stringify(r));console.error('seed verify failed: '+rows.length+' row(s)');process.exit(1)}console.log('seed verify clean')})"
+
   verify:remote-cascade:
     desc: Verify FK/ON DELETE CASCADE on remote D1 (issue #23; needs Cloudflare auth env)
     dir: api

@@ -45,6 +45,7 @@ const EXPECTED_INDEXES = [
   "idx_band_members_band",
   "idx_band_members_member",
   "idx_bands_norm",
+  "idx_claim_sources_lookup",
   "idx_media_band",
   "idx_media_release",
   "idx_releases_band",
@@ -194,5 +195,40 @@ describe("0002_five_tables migration (real DDL applied to local SQLite/D1-like D
     expect(old.prepare("SELECT COUNT(*) AS n FROM releases WHERE title_norm IS NULL").get()?.n).toBe(0);
     expect(old.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_releases_title_norm'").all()).toHaveLength(1);
     old.close();
+  });
+
+  it("0005 creates claim_sources with UNIQUE + CHECK guards, defaults, and the lookup index", () => {
+    seed(db);
+    const insert =
+      "INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    db.prepare(insert).run("cs1", "band", "b1", "formed_year", "1997", "confirmed", 1, "https://example.com", "2026-10-18");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM claim_sources").get()?.n).toBe(1);
+    // A losing rival (same field, different value) is kept.
+    db.prepare(insert).run("cs2", "band", "b1", "formed_year", "1998", "disputed", 3, "https://example.com/tip", "2026-10-18");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM claim_sources").get()?.n).toBe(2);
+    // An exact dupe (same entity, field, value, source) violates UNIQUE.
+    expect(() =>
+      db.prepare(insert).run("cs3", "band", "b1", "formed_year", "1997", "confirmed", 1, "https://example.com", "2026-10-18"),
+    ).toThrow(/UNIQUE constraint failed/i);
+    // Tier outside 1-3 violates CHECK.
+    expect(() =>
+      db.prepare(insert).run("cs4", "band", "b1", "formed_year", "1999", "confirmed", 4, "https://example.com", "2026-10-18"),
+    ).toThrow(/CHECK constraint failed/i);
+    // Unknown status violates CHECK.
+    expect(() =>
+      db.prepare(insert).run("cs5", "band", "b1", "formed_year", "1999", "rumored", 2, "https://example.com", "2026-10-18"),
+    ).toThrow(/CHECK constraint failed/i);
+    // Unknown entity_type violates CHECK.
+    expect(() =>
+      db.prepare(insert).run("cs6", "label", "b1", "founded", "1990", "confirmed", 2, "https://example.com", "2026-10-18"),
+    ).toThrow(/CHECK constraint failed/i);
+    // created_at + updated_at default.
+    const row = db.prepare("SELECT created_at AS c, updated_at AS u FROM claim_sources WHERE id = ?").get("cs1") as
+      | { c: unknown; u: unknown }
+      | undefined;
+    expect(typeof row?.c).toBe("string");
+    expect(typeof row?.u).toBe("string");
+    // Lookup index exists.
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_claim_sources_lookup'").all()).toHaveLength(1);
   });
 });
