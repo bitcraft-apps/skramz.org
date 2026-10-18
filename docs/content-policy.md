@@ -68,5 +68,5 @@ Seeds are per-environment starter records, applied explicitly with
 - Plain INSERTs only, so a conflict fails loudly. Never INSERT OR IGNORE (or REPLACE) under foreign keys.
 - NULL is an honest gap: blanks allowed wherever no source clears the bar.
 - Every display value needs a source row or it stays `unconfirmed`. Corrections follow §5.
-- Seeds must verify clean: no orphan edges, no orphan evidence. The check queries, the `task seed` entrypoint, and the `claim_sources` table land with the first seed (Phase 5) — any row returned rejects the seed.
+- Seeds must verify clean: no orphan edges, no orphan evidence. The check queries (`api/seeds/_verify.sql`), the `task seed` entrypoint, and the `claim_sources` table land in Phase 1 (migration 0005); the first seed data lands in Phase 5 — any row returned rejects the seed.
 - `claim_sources.note` is an internal working note for future curators, never rendered.
