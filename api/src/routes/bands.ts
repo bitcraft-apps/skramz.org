@@ -2,6 +2,7 @@ import type { App } from "../lib/http";
 import {
   GRAPH_LIMIT,
   escapeLike,
+  fetchClaimSources,
   normalizeName,
   parseDepth,
   parseLimit,
@@ -47,7 +48,7 @@ export function registerBands(app: App): void {
       return c.json({ error: { code: "not_found", message: "Band not found" } }, 404);
     }
     const members = await c.env.DB.prepare(
-      "SELECT m.*, bm.role, bm.joined_year, bm.left_year FROM members m JOIN band_members bm ON bm.member_id = m.id WHERE bm.band_id = ? ORDER BY m.id LIMIT 50",
+      "SELECT m.*, bm.role, bm.joined_year, bm.left_year, bm.id AS band_member_id FROM members m JOIN band_members bm ON bm.member_id = m.id WHERE bm.band_id = ? ORDER BY m.id LIMIT 50",
     )
       .bind(id)
       .all<Record<string, unknown>>();
@@ -57,11 +58,24 @@ export function registerBands(app: App): void {
     const media = await c.env.DB.prepare("SELECT * FROM media_links WHERE band_id = ? ORDER BY id LIMIT 50")
       .bind(id)
       .all<Record<string, unknown>>();
+    const sources = await fetchClaimSources(c.env.DB, [
+      { entity_type: "band", entity_id: id },
+      ...members.results.flatMap((m) => [
+        { entity_type: "member", entity_id: String(m.id) },
+        { entity_type: "band_member", entity_id: String(m.band_member_id) },
+      ]),
+      ...releases.results.map((r) => ({ entity_type: "release", entity_id: String(r.id) })),
+      ...media.results.map((m) => ({ entity_type: "media_link", entity_id: String(m.id) })),
+    ]);
+    // band_member_id is only the join key for the sources lookup above,
+    // not part of the public member shape.
+    for (const m of members.results) delete m.band_member_id;
     return c.json({
       data: band,
       members: members.results,
       releases: releases.results,
       media_links: media.results,
+      sources,
     });
   });
 

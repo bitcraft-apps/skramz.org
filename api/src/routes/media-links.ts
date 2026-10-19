@@ -1,5 +1,5 @@
 import type { App } from "../lib/http";
-import { publicWriteError, readBody, requireAuth } from "../lib/http";
+import { fetchClaimSources, publicWriteError, readBody, requireAuth } from "../lib/http";
 
 function singleParentViolation(releaseId: unknown, bandId: unknown): boolean {
   // Exactly one parent required (mirrors the DDL CHECK at handler layer).
@@ -9,6 +9,19 @@ function singleParentViolation(releaseId: unknown, bandId: unknown): boolean {
 }
 
 export function registerMediaLinks(app: App): void {
+  // GET /api/media-links/:id — media link + its sources.
+  app.get("/api/media-links/:id", async (c) => {
+    const id = c.req.param("id");
+    const row = await c.env.DB.prepare("SELECT * FROM media_links WHERE id = ?")
+      .bind(id)
+      .first<Record<string, unknown>>();
+    if (!row) {
+      return c.json({ error: { code: "not_found", message: "Media link not found" } }, 404);
+    }
+    const sources = await fetchClaimSources(c.env.DB, [{ entity_type: "media_link", entity_id: id }]);
+    return c.json({ data: row, sources });
+  });
+
   // POST /api/media-links
   app.post("/api/media-links", async (c) => {
     const denied = await requireAuth(c);
