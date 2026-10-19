@@ -1,5 +1,5 @@
 import type { App } from "../lib/http";
-import { normalizeName, publicWriteError, readBody, requireAuth } from "../lib/http";
+import { fetchClaimSources, normalizeName, publicWriteError, readBody, requireAuth } from "../lib/http";
 
 export function registerMembers(app: App): void {
   // GET /api/members/:id — member + band history.
@@ -12,11 +12,15 @@ export function registerMembers(app: App): void {
       return c.json({ error: { code: "not_found", message: "Member not found" } }, 404);
     }
     const bands = await c.env.DB.prepare(
-      "SELECT b.*, bm.role, bm.joined_year, bm.left_year FROM bands b JOIN band_members bm ON bm.band_id = b.id WHERE bm.member_id = ? ORDER BY b.id LIMIT 50",
+      "SELECT b.*, bm.role, bm.joined_year, bm.left_year, bm.id AS band_member_id FROM bands b JOIN band_members bm ON bm.band_id = b.id WHERE bm.member_id = ? ORDER BY b.id LIMIT 50",
     )
       .bind(id)
       .all<Record<string, unknown>>();
-    return c.json({ data: member, bands: bands.results });
+    const sources = await fetchClaimSources(c.env.DB, [
+      { entity_type: "member", entity_id: id },
+      ...bands.results.map((b) => ({ entity_type: "band_member", entity_id: String(b.band_member_id) })),
+    ]);
+    return c.json({ data: member, bands: bands.results, sources });
   });
 
   // POST /api/members

@@ -1,5 +1,5 @@
 import type { Context, Hono } from "hono";
-import type { Bindings } from "./db";
+import type { Bindings, D1Database } from "./db";
 
 export type App = Hono<{ Bindings: Bindings }>;
 
@@ -107,6 +107,54 @@ export async function readBody(c: AppContext): Promise<{ ok: true; body: Record<
   } catch {
     return { ok: false };
   }
+}
+
+// One bounded sidecar read per detail response: winners and disputed
+// rivals alike, unfiltered (absence of a row is the unconfirmed signal).
+// The note column stays internal and is never selected.
+export type ClaimSourceRef = { entity_type: string; entity_id: string };
+
+export type ClaimSourceRow = {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  field: string;
+  value: string | null;
+  status: string;
+  tier: number;
+  source_url: string;
+  accessed_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+const CLAIM_ENTITY_TYPES = new Set(["band", "member", "band_member", "release", "media_link"]);
+
+export async function fetchClaimSources(
+  db: D1Database,
+  refs: ClaimSourceRef[],
+): Promise<ClaimSourceRow[]> {
+  const byType = new Map<string, string[]>();
+  for (const ref of refs) {
+    if (!ref.entity_id || !CLAIM_ENTITY_TYPES.has(ref.entity_type)) continue;
+    const ids = byType.get(ref.entity_type) ?? [];
+    ids.push(ref.entity_id);
+    byType.set(ref.entity_type, ids);
+  }
+  if (byType.size === 0) return [];
+  const clauses: string[] = [];
+  const vals: unknown[] = [];
+  for (const [type, ids] of byType) {
+    clauses.push(`(entity_type = ? AND entity_id IN (${ids.map(() => "?").join(", ")}))`);
+    vals.push(type, ...ids);
+  }
+  const rows = await db
+    .prepare(
+      `SELECT id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, created_at, updated_at FROM claim_sources WHERE ${clauses.join(" OR ")} ORDER BY entity_type, entity_id, field LIMIT 200`,
+    )
+    .bind(...vals)
+    .all<ClaimSourceRow>();
+  return rows.results;
 }
 
 // Writes require `Authorization: Bearer <INGESTION_TOKEN>` (timing-safe

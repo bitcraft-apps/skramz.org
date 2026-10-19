@@ -1,5 +1,5 @@
 import type { App } from "../lib/http";
-import { RELEASE_TYPES, normalizeName, publicWriteError, readBody, requireAuth } from "../lib/http";
+import { RELEASE_TYPES, fetchClaimSources, normalizeName, publicWriteError, readBody, requireAuth } from "../lib/http";
 
 function invalidReleaseType(value: unknown): boolean {
   // releases.release_type is NOT NULL (issue #21); a present value must be in
@@ -22,7 +22,11 @@ export function registerReleases(app: App): void {
     const media = await c.env.DB.prepare("SELECT * FROM media_links WHERE release_id = ? ORDER BY id LIMIT 50")
       .bind(id)
       .all<Record<string, unknown>>();
-    return c.json({ data: release, media_links: media.results });
+    const sources = await fetchClaimSources(c.env.DB, [
+      { entity_type: "release", entity_id: id },
+      ...media.results.map((m) => ({ entity_type: "media_link", entity_id: String(m.id) })),
+    ]);
+    return c.json({ data: release, media_links: media.results, sources });
   });
 
   // POST /api/releases
