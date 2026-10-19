@@ -232,3 +232,132 @@ describe("0002_five_tables migration (real DDL applied to local SQLite/D1-like D
     expect(db.prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_claim_sources_lookup'").all()).toHaveLength(1);
   });
 });
+
+describe("0006_updated_at migration (real DDL applied to local SQLite/D1-like DB)", () => {
+  let db: Db;
+  beforeEach(() => {
+    db = migratedDb();
+  });
+  afterEach(() => {
+    db.close();
+  });
+
+  const OLD = "2000-01-01T00:00:00.000Z";
+  function pinBand(id: string) {
+    db.prepare("UPDATE bands SET updated_at = ? WHERE id = ?").run(OLD, id);
+  }
+  function bandStamp(id: string): unknown {
+    return db.prepare("SELECT updated_at AS u FROM bands WHERE id = ?").get(id)?.u;
+  }
+
+  it("inserting a release stamps the row and touches the parent band", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("INSERT INTO releases (id, band_id, title, title_norm, release_type) VALUES (?, ?, ?, ?, ?)").run(
+      "r2",
+      "b1",
+      "Demo",
+      "demo",
+      "Demo",
+    );
+    const row = db.prepare("SELECT updated_at AS u FROM releases WHERE id = ?").get("r2") as { u: unknown };
+    expect(typeof row.u).toBe("string");
+    expect(bandStamp("b1")).not.toBe(OLD);
+    expect(typeof bandStamp("b1")).toBe("string");
+  });
+
+  it("updating a release moves both the row and the parent band", () => {
+    seed(db);
+    db.prepare("UPDATE releases SET updated_at = ? WHERE id = ?").run(OLD, "r1");
+    pinBand("b1");
+    db.prepare("UPDATE releases SET title = ? WHERE id = ?").run("Saetia Remixed", "r1");
+    expect(db.prepare("SELECT updated_at AS u FROM releases WHERE id = ?").get("r1")?.u).not.toBe(OLD);
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("a member write touches every band the member belongs to", () => {
+    seed(db);
+    db.prepare("INSERT INTO bands (id, name, name_norm) VALUES (?, ?, ?)").run("b2", "Orchid", "orchid");
+    db.prepare("INSERT INTO band_members (id, band_id, member_id) VALUES (?, ?, ?)").run("bm2", "b2", "m1");
+    pinBand("b1");
+    pinBand("b2");
+    db.prepare("UPDATE members SET bio = ? WHERE id = ?").run("Screamed vocals", "m1");
+    expect(db.prepare("SELECT updated_at AS u FROM members WHERE id = ?").get("m1")?.u).not.toBeNull();
+    expect(bandStamp("b1")).not.toBe(OLD);
+    expect(bandStamp("b2")).not.toBe(OLD);
+  });
+
+  it("band_members inserts stamp the row and touch the band", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("INSERT INTO band_members (id, band_id, member_id) VALUES (?, ?, ?)").run("bm2", "b1", "m1");
+    expect(db.prepare("SELECT updated_at AS u FROM band_members WHERE id = ?").get("bm2")?.u).not.toBeNull();
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("band-only and release-via media_link inserts each touch the band", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("INSERT INTO media_links (id, band_id, provider, url) VALUES (?, ?, ?, ?)").run(
+      "x-band",
+      "b1",
+      "youtube",
+      "https://example.com/b",
+    );
+    expect(db.prepare("SELECT updated_at AS u FROM media_links WHERE id = ?").get("x-band")?.u).not.toBeNull();
+    expect(bandStamp("b1")).not.toBe(OLD);
+    pinBand("b1");
+    db.prepare("INSERT INTO media_links (id, release_id, provider, url) VALUES (?, ?, ?, ?)").run(
+      "x-rel",
+      "r1",
+      "bandcamp",
+      "https://example.com/r",
+    );
+    expect(db.prepare("SELECT updated_at AS u FROM media_links WHERE id = ?").get("x-rel")?.u).not.toBeNull();
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("a band update self-stamps without route help", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("UPDATE bands SET location = ? WHERE id = ?").run("NY", "b1");
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("0006 backfills members/releases from created_at and leaves join tables NULL", () => {
+    const old = new DatabaseSync(":memory:");
+    old.exec("PRAGMA foreign_keys = ON;");
+    for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()) {
+      if (file >= "0006") continue;
+      old.exec(readFileSync(join(migrationsDir, file), "utf8"));
+    }
+    old.prepare("INSERT INTO bands (id, name, name_norm) VALUES (?, ?, ?)").run("b1", "Saetia", "saetia");
+    old.prepare("INSERT INTO members (id, name, name_norm, created_at) VALUES (?, ?, ?, ?)").run(
+      "m1",
+      "Billy Werner",
+      "billy werner",
+      "2020-05-05T05:05:05.005Z",
+    );
+    old.prepare("INSERT INTO band_members (id, band_id, member_id) VALUES (?, ?, ?)").run("bm1", "b1", "m1");
+    old.prepare("INSERT INTO releases (id, band_id, title, title_norm, release_type, created_at) VALUES (?, ?, ?, ?, ?, ?)").run(
+      "r1",
+      "b1",
+      "Saetia",
+      "saetia",
+      "LP",
+      "2021-06-06T06:06:06.006Z",
+    );
+    old.prepare("INSERT INTO media_links (id, band_id, provider, url) VALUES (?, ?, ?, ?)").run(
+      "x1",
+      "b1",
+      "youtube",
+      "https://example.com/b",
+    );
+    old.exec(readFileSync(join(migrationsDir, "0006_updated_at.sql"), "utf8"));
+    expect(old.prepare("SELECT updated_at AS u FROM members WHERE id = ?").get("m1")?.u).toBe("2020-05-05T05:05:05.005Z");
+    expect(old.prepare("SELECT updated_at AS u FROM releases WHERE id = ?").get("r1")?.u).toBe("2021-06-06T06:06:06.006Z");
+    expect(old.prepare("SELECT updated_at AS u FROM band_members WHERE id = ?").get("bm1")?.u).toBeNull();
+    expect(old.prepare("SELECT updated_at AS u FROM media_links WHERE id = ?").get("x1")?.u).toBeNull();
+    old.close();
+  });
+});
