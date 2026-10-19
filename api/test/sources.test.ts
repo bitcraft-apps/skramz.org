@@ -141,7 +141,7 @@ describe("readers serve sources", () => {
     const rival = json.sources.find((s) => s.id === "cs2");
     expect(rival?.status).toBe("disputed");
     expectNoNotes(json.sources);
-    expect(json.members[0].band_member_id).toBe("bm1");
+    expect(json.members[0]).not.toHaveProperty("band_member_id");
   });
 
   it("sourceless band returns an empty array without error", async () => {
@@ -166,7 +166,7 @@ describe("readers serve sources", () => {
     };
     expect(Object.keys(json).sort()).toEqual(["bands", "data", "sources"]);
     expect(json.sources.map((s) => s.id).sort()).toEqual(["cs3", "cs4", "cs5"]);
-    expect(json.bands[0].band_member_id).toBe("bm1");
+    expect(json.bands[0]).not.toHaveProperty("band_member_id");
     expectNoNotes(json.sources);
   });
 

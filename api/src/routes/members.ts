@@ -20,6 +20,9 @@ export function registerMembers(app: App): void {
       { entity_type: "member", entity_id: id },
       ...bands.results.map((b) => ({ entity_type: "band_member", entity_id: String(b.band_member_id) })),
     ]);
+    // band_member_id is only the join key for the sources lookup above,
+    // not part of the public band shape.
+    for (const b of bands.results) delete b.band_member_id;
     return c.json({ data: member, bands: bands.results, sources });
   });
 

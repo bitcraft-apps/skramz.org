@@ -67,6 +67,9 @@ export function registerBands(app: App): void {
       ...releases.results.map((r) => ({ entity_type: "release", entity_id: String(r.id) })),
       ...media.results.map((m) => ({ entity_type: "media_link", entity_id: String(m.id) })),
     ]);
+    // band_member_id is only the join key for the sources lookup above,
+    // not part of the public member shape.
+    for (const m of members.results) delete m.band_member_id;
     return c.json({
       data: band,
       members: members.results,
