@@ -566,6 +566,25 @@ describe("issue #8: PATCH writes", () => {
     expect(res.status).toBe(422);
   });
 
+  it("PATCH child moves bands.updated_at through the parent-touch trigger", async () => {
+    db.prepare("UPDATE bands SET updated_at = ? WHERE id = ?").run("2000-01-01T00:00:00.000Z", "b1");
+    const res = await app.request(
+      "/api/releases/r1",
+      {
+        method: "PATCH",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Saetia Remixed" }),
+      },
+      ENV,
+    );
+    expect(res.status).toBe(200);
+    const band = db.prepare("SELECT updated_at AS u FROM bands WHERE id = ?").get("b1") as { u: unknown };
+    expect(typeof band.u).toBe("string");
+    expect(band.u).not.toBe("2000-01-01T00:00:00.000Z");
+    const release = db.prepare("SELECT updated_at AS u FROM releases WHERE id = ?").get("r1") as { u: unknown };
+    expect(typeof release.u).toBe("string");
+  });
+
   it("PATCH /api/releases/:id rejects clearing release_type to null with 422 (issue #21)", async () => {
     const res = await app.request(
       "/api/releases/r1",
