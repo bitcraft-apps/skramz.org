@@ -76,13 +76,13 @@ CREATE TRIGGER IF NOT EXISTS trg_media_links_insert AFTER INSERT ON media_links
 BEGIN
   UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id AND NEW.updated_at IS NULL;
   UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE id = NEW.band_id OR id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
+    WHERE id = COALESCE(NEW.band_id, (SELECT band_id FROM releases WHERE id = NEW.release_id));
 END;
 CREATE TRIGGER IF NOT EXISTS trg_media_links_update AFTER UPDATE ON media_links
 BEGIN
   UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id AND NEW.updated_at IS OLD.updated_at;
   UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE id = NEW.band_id OR id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
+    WHERE id = COALESCE(NEW.band_id, (SELECT band_id FROM releases WHERE id = NEW.release_id));
 END;
 
 -- Backfill where a trustworthy value exists; join tables keep NULL.
