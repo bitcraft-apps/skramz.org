@@ -25,13 +25,12 @@ BEGIN
   UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
 END;
 
--- Member writes touch every band the member belongs to.
+-- Member updates touch every band the member belongs to. Inserts only
+-- self-stamp: no band_members row can reference the member yet.
 CREATE TRIGGER IF NOT EXISTS trg_members_stamp_insert AFTER INSERT ON members
 WHEN NEW.updated_at IS NULL
 BEGIN
   UPDATE members SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
-  UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE id IN (SELECT band_id FROM band_members WHERE member_id = NEW.id);
 END;
 CREATE TRIGGER IF NOT EXISTS trg_members_stamp_update AFTER UPDATE ON members
 WHEN NEW.updated_at IS OLD.updated_at
@@ -71,37 +70,19 @@ END;
 
 -- Media-link writes stamp the row and touch the parent band, either directly
 -- or through the linked release (exactly one parent per the table CHECK).
-CREATE TRIGGER IF NOT EXISTS trg_media_links_stamp_insert AFTER INSERT ON media_links
-WHEN NEW.updated_at IS NULL
+-- One trigger per write: the self-stamp stays conditional so explicit writes
+-- win, while the parent touch is unconditional.
+CREATE TRIGGER IF NOT EXISTS trg_media_links_insert AFTER INSERT ON media_links
 BEGIN
-  UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_media_links_stamp_update AFTER UPDATE ON media_links
-WHEN NEW.updated_at IS OLD.updated_at
-BEGIN
-  UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_media_links_touch_band_insert AFTER INSERT ON media_links
-WHEN NEW.band_id IS NOT NULL
-BEGIN
-  UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.band_id;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_media_links_touch_band_update AFTER UPDATE ON media_links
-WHEN NEW.band_id IS NOT NULL
-BEGIN
-  UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.band_id;
-END;
-CREATE TRIGGER IF NOT EXISTS trg_media_links_touch_release_insert AFTER INSERT ON media_links
-WHEN NEW.release_id IS NOT NULL
-BEGIN
+  UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id AND NEW.updated_at IS NULL;
   UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
+    WHERE id = NEW.band_id OR id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
 END;
-CREATE TRIGGER IF NOT EXISTS trg_media_links_touch_release_update AFTER UPDATE ON media_links
-WHEN NEW.release_id IS NOT NULL
+CREATE TRIGGER IF NOT EXISTS trg_media_links_update AFTER UPDATE ON media_links
 BEGIN
+  UPDATE media_links SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = NEW.id AND NEW.updated_at IS OLD.updated_at;
   UPDATE bands SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-    WHERE id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
+    WHERE id = NEW.band_id OR id = (SELECT band_id FROM releases WHERE id = NEW.release_id);
 END;
 
 -- Backfill where a trustworthy value exists; join tables keep NULL.
