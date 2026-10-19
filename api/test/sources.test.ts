@@ -133,9 +133,11 @@ describe("readers serve sources", () => {
       members: Record<string, unknown>[];
       releases: unknown[];
       media_links: unknown[];
+      links: { portal: string; url: string }[];
       sources: SourceRow[];
     };
-    expect(Object.keys(json).sort()).toEqual(["data", "media_links", "members", "releases", "sources"]);
+    expect(Object.keys(json).sort()).toEqual(["data", "links", "media_links", "members", "releases", "sources"]);
+    expect(json.links).toEqual([]);
     const ids = json.sources.map((s) => s.id).sort();
     expect(ids).toEqual(["cs1", "cs2", "cs3", "cs4", "cs5", "cs6", "cs7"]);
     const rival = json.sources.find((s) => s.id === "cs2");

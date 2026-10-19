@@ -42,6 +42,7 @@ function seed(db: Db) {
 }
 
 const EXPECTED_INDEXES = [
+  "idx_band_links_band",
   "idx_band_members_band",
   "idx_band_members_member",
   "idx_bands_norm",

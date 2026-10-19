@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import type { Bindings, D1Database, D1PreparedStatement } from "./lib/db";
 import { publicInternalError } from "./lib/http";
 import type { App } from "./lib/http";
+import { registerBandLinks } from "./routes/band-links";
 import { registerBands } from "./routes/bands";
 import { registerHealth } from "./routes/health";
 import { registerMediaLinks } from "./routes/media-links";
@@ -50,6 +51,7 @@ export function createApp(): App {
   app.use("/*", cors({ origin: (origin) => allowOrigin(origin) }));
 
   registerHealth(app);
+  registerBandLinks(app);
   registerBands(app);
   registerMembers(app);
   registerReleases(app);

@@ -9,11 +9,14 @@ async function fetchJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export type BandLink = { portal: string; url: string };
+
 export type BandDetail = {
   data: Record<string, unknown>;
   members: Record<string, unknown>[];
   releases: Record<string, unknown>[];
   media_links: Record<string, unknown>[];
+  links?: BandLink[];
 };
 
 export type BandGraph = {

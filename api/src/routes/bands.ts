@@ -70,12 +70,16 @@ export function registerBands(app: App): void {
     // band_member_id is only the join key for the sources lookup above,
     // not part of the public member shape.
     for (const m of members.results) delete m.band_member_id;
+    const links = await c.env.DB.prepare("SELECT portal, url FROM band_links WHERE band_id = ? ORDER BY portal, url LIMIT 50")
+      .bind(id)
+      .all<Record<string, unknown>>();
     return c.json({
       data: band,
       members: members.results,
       releases: releases.results,
       media_links: media.results,
       sources,
+      links: links.results,
     });
   });
 
