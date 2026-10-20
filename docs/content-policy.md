@@ -62,11 +62,13 @@ Anyone can report a wrong claim or infringing file with a source or rights note.
 ## 7. Seeds
 
 Seeds are per-environment starter records, applied explicitly with
-`task seed` — never via migrations.
+`task seed` (flat files at `api/seeds/`) or `task evidence` /
+`task evidence:prod` (per-band files at `api/seeds/{band}/NNN-name.sql`
+via `api/scripts/apply-evidence.sh`) — never via migrations.
 
-- One file per band, with ids derived as `{band}-{kind}-{name-slug}` using the full band slug (`orchid-m-jeff-salane`, `orchid-cs-formed`). A UNIQUE conflict then names the actual duplicate.
+- One directory per band (`api/seeds/{band}/` in apply order: `001-band.sql` display rows, `002-links.sql`, `00N-evidence.sql` confirmation batches), with ids derived as `{band}-{kind}-{name-slug}` using the full band slug (`orchid-m-jeff-salane`, `orchid-cs-formed`). A UNIQUE conflict then names the actual duplicate.
 - Plain INSERTs only, so a conflict fails loudly. Never INSERT OR IGNORE (or REPLACE) under foreign keys.
 - NULL is an honest gap: blanks allowed wherever no source clears the bar.
 - Every display value needs a source row or it stays `unconfirmed`. Corrections follow §5.
-- Seeds must verify clean: no orphan edges, no orphan evidence. The check queries (`api/seeds/_verify.sql`), the `task seed` entrypoint, and the `claim_sources` table land in Phase 1 (migration 0005); the first seed data lands in Phase 5 — any row returned rejects the seed.
+- Seeds must verify clean: no orphan edges, no orphan evidence. The check queries (`api/seeds/_verify.sql`), the `task seed` / `task evidence` entrypoints, and the `claim_sources` table land in Phase 1 (migration 0005); the first seed data lands in Phase 5 — any row returned rejects the seed.
 - `claim_sources.note` is an internal working note for future curators, never rendered.
