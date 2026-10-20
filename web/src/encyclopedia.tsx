@@ -372,6 +372,7 @@ export function BandView() {
     if (status === "unconfirmed" && !hasSources) return null;
     return <FieldMarker status={status} domain={domainOf(field)} />;
   };
+  const photoMarker = markerFor("photo");
   const embeds = data.media_links
     .map(embedUrl)
     .filter((url): url is string => url !== null);
@@ -415,9 +416,7 @@ export function BandView() {
               alt={`${name} photo`}
               className="zine-border zine-shadow-sm mt-3 w-full"
             />
-            {markerFor("photo") && (
-              <p className="mt-1 text-xs">{markerFor("photo")}</p>
-            )}
+            {photoMarker && <p className="mt-1 text-xs">{photoMarker}</p>}
           </>
         )}
         {bio && (
