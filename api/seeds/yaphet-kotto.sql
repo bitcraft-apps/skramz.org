@@ -1,17 +1,9 @@
--- Yaphet Kotto seed: deepest-correct-record lineup.
--- Display tables keep winning values only (NULL = visible gap, shown with an
--- unconfirmed badge); every claim below has its evidence in claim_sources.
--- Bio is own words, derived from the cited label/discography sources.
--- Provenance (verified 2026-10-20): T1 Ebullition catalog43 (location, Scott
--- on drums); T2 Discogs artist 445131 (formed 1996/disbanded 2005, 10 member
--- links, catalogue depth); Wikipedia (years/names/LP spine; tertiary, capped
--- T2, unreferenced lines T3); T3 diymusicwiki (role leads only, never confirms).
--- Losing rivals stay disputed (formed ~1997 T1 math; Keith Milller T2 spelling
--- vs Keith Miller T3); roles/years without T1/T2 stay NULL + unconfirmed.
--- Apply once per database with `task seed SEED=yaphet-kotto.sql`. Plain
--- INSERTs on purpose: a UNIQUE conflict means the record already exists, and
--- failing loudly beats INSERT OR IGNORE, which would skip the parent while
--- inserting orphan edges under foreign keys. Merge by hand on conflict.
+-- Yaphet Kotto seed: deepest-correct-record lineup (1 band, 10 members, 10 edges, 20 claims).
+-- Display tables keep winning values only (NULL = visible gap); claim_sources holds all
+-- evidence, including losing rivals (disputed) and T3 role leads (unconfirmed). Tiers,
+-- URLs, and curator notes live on the rows below. Bio is own words, derived from them.
+-- Apply once per database with `task seed SEED=yaphet-kotto.sql`. Plain INSERTs on
+-- purpose: a UNIQUE conflict means the record already exists, so merge by hand.
 -- Fixed ids. Portable SQLite.
 INSERT INTO bands (id, name, name_norm, formed_year, disbanded_year, location, bio) VALUES
   ('band-yaphet-kotto', 'Yaphet Kotto', 'yaphet kotto', 1996, 2005,
@@ -60,9 +52,6 @@ INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tie
   ('yaphet-kotto-cs-bio', 'band', 'band-yaphet-kotto', 'bio', NULL, 'confirmed', 1,
    'http://www.ebullition.com/catalog43.html', '2026-10-20',
    'Own-words summary of the label catalog discography spine.'),
-  ('yaphet-kotto-cs-years', 'band', 'band-yaphet-kotto', 'lineup_years', NULL, 'unconfirmed', 3,
-   'https://en.wikipedia.org/wiki/Yaphet_Kotto_(band)', '2026-10-20',
-   'No T1/T2 source gives join/leave years; community lists give names only.'),
   ('yaphet-kotto-cs-mb-austin-barber', 'band_member', 'yaphet-kotto-bm-austin-barber', 'membership', 'Austin Barber', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),
   ('yaphet-kotto-cs-mb-casey-watson', 'band_member', 'yaphet-kotto-bm-casey-watson', 'membership', 'Casey Watson', 'confirmed', 2,
