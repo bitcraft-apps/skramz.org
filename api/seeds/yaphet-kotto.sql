@@ -24,17 +24,17 @@ INSERT INTO members (id, name, name_norm) VALUES
 
 -- Only Scott Batiste clears the T1/T2 bar for a role (label catalog names him
 -- on drums). All other roles and every join/leave year are NULL gaps.
-INSERT INTO band_members (id, band_id, member_id, role, joined_year, left_year) VALUES
-  ('yaphet-kotto-bm-austin-barber', 'band-yaphet-kotto', 'yaphet-kotto-m-austin-barber', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-casey-watson', 'band-yaphet-kotto', 'yaphet-kotto-m-casey-watson', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-chris-story', 'band-yaphet-kotto', 'yaphet-kotto-m-chris-story', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-jose-palafox', 'band-yaphet-kotto', 'yaphet-kotto-m-jose-palafox', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-keith-miller', 'band-yaphet-kotto', 'yaphet-kotto-m-keith-miller', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-luke-clements', 'band-yaphet-kotto', 'yaphet-kotto-m-luke-clements', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-mag-delana', 'band-yaphet-kotto', 'yaphet-kotto-m-mag-delana', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-pat-crowley', 'band-yaphet-kotto', 'yaphet-kotto-m-pat-crowley', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-paul-cameron', 'band-yaphet-kotto', 'yaphet-kotto-m-paul-cameron', NULL, NULL, NULL),
-  ('yaphet-kotto-bm-scott-batiste', 'band-yaphet-kotto', 'yaphet-kotto-m-scott-batiste', 'drums', NULL, NULL);
+INSERT INTO band_members (id, band_id, member_id, role) VALUES
+  ('yaphet-kotto-bm-austin-barber', 'band-yaphet-kotto', 'yaphet-kotto-m-austin-barber', NULL),
+  ('yaphet-kotto-bm-casey-watson', 'band-yaphet-kotto', 'yaphet-kotto-m-casey-watson', NULL),
+  ('yaphet-kotto-bm-chris-story', 'band-yaphet-kotto', 'yaphet-kotto-m-chris-story', NULL),
+  ('yaphet-kotto-bm-jose-palafox', 'band-yaphet-kotto', 'yaphet-kotto-m-jose-palafox', NULL),
+  ('yaphet-kotto-bm-keith-miller', 'band-yaphet-kotto', 'yaphet-kotto-m-keith-miller', NULL),
+  ('yaphet-kotto-bm-luke-clements', 'band-yaphet-kotto', 'yaphet-kotto-m-luke-clements', NULL),
+  ('yaphet-kotto-bm-mag-delana', 'band-yaphet-kotto', 'yaphet-kotto-m-mag-delana', NULL),
+  ('yaphet-kotto-bm-pat-crowley', 'band-yaphet-kotto', 'yaphet-kotto-m-pat-crowley', NULL),
+  ('yaphet-kotto-bm-paul-cameron', 'band-yaphet-kotto', 'yaphet-kotto-m-paul-cameron', NULL),
+  ('yaphet-kotto-bm-scott-batiste', 'band-yaphet-kotto', 'yaphet-kotto-m-scott-batiste', 'drums');
 
 -- Evidence sidecar. Tiers: 1 label/official, 2 reputable with history,
 -- 3 community (lead only, never confirms).
