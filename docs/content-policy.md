@@ -72,3 +72,4 @@ via `api/scripts/apply-evidence.sh`) — never via migrations.
 - Every display value needs a source row or it stays `unconfirmed`. Corrections follow §5.
 - Seeds must verify clean: no orphan edges, no orphan evidence. The check queries (`api/seeds/_verify.sql`), the `task seed` / `task evidence` entrypoints, and the `claim_sources` table land in Phase 1 (migration 0005); the first seed data lands in Phase 5 — any row returned rejects the seed.
 - `claim_sources.note` is an internal working note for future curators, never rendered.
+- Copy-paste templates live in `api/seeds/templates/` — copy them out, do not apply them in place.
