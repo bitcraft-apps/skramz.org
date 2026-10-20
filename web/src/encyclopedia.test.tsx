@@ -11,6 +11,7 @@ const bandPayload = {
   members: [{ id: "m1", name: "Probe Member" }],
   releases: [{ id: "r1", title: "Probe Release", cover_r2_key: "releases/r1/cover.jpg" }],
   media_links: [],
+  sources: [],
 };
 
 // App binds the singleton queryClient, so clear its cache between tests —
@@ -152,6 +153,113 @@ describe("band hero", () => {
       await screen.findByText("No streams yet."),
     ).toBeInTheDocument();
     expect(usePlayerStore.getState().current).toBeNull();
+  });
+});
+
+describe("band evidence", () => {
+  const evidenceHero = {
+    ...bandPayload,
+    data: {
+      ...bandPayload.data,
+      location: "Portland",
+      formed_year: 1998,
+      bio: "Loud basement trio.",
+      updated_at: null,
+    },
+    sources: [],
+  };
+
+  it("marks sourceless fields unconfirmed with hedged wording", async () => {
+    stubApi(evidenceHero);
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    expect(
+      within(hero).getAllByTitle("unconfirmed: no source recorded").length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(hero).getByText("reportedly — unconfirmed"),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the ledger collapsed with an empty state when sourceless", async () => {
+    stubApi(evidenceHero);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    expect(within(ledger).getByText("sources (0)")).toBeInTheDocument();
+    expect(
+      within(ledger).getByText(
+        "No sources recorded — all fields unconfirmed.",
+      ),
+    ).toBeInTheDocument();
+    expect(ledger.querySelector("details")).not.toHaveAttribute("open");
+  });
+
+  it("shows a visible disputed marker and auto-expands the ledger", async () => {
+    stubApi({
+      ...evidenceHero,
+      sources: [
+        {
+          id: "c1",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: "Loud basement trio.",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-09-01",
+          created_at: "2026-09-01",
+          updated_at: null,
+        },
+        {
+          id: "c2",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: "Quiet bedroom project.",
+          status: "disputed",
+          tier: 3,
+          source_url: "https://forum.example.net/thread",
+          accessed_at: "2026-10-02",
+          created_at: "2026-10-02",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    expect(within(hero).getByText("disputed")).toBeInTheDocument();
+    const ledger = await screen.findByLabelText("sources");
+    expect(ledger.querySelector("details")).toHaveAttribute("open");
+    const link = within(ledger).getByRole("link", {
+      name: "press.example.org",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://press.example.org/review",
+    );
+    expect(within(ledger).getByText("2026-09-01")).toBeInTheDocument();
+    expect(within(ledger).getByText("T2 reputable")).toBeInTheDocument();
+  });
+
+  it("renders freshness unknown when updated_at is missing", async () => {
+    stubApi(evidenceHero);
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    expect(within(hero).getByText("freshness unknown")).toBeInTheDocument();
+  });
+
+  it("renders a relative freshness line for a valid updated_at", async () => {
+    stubApi({
+      ...evidenceHero,
+      data: {
+        ...evidenceHero.data,
+        updated_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+      },
+    });
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    expect(within(hero).getByText("updated 3d ago")).toBeInTheDocument();
   });
 });
 
