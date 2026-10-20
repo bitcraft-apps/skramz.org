@@ -1,13 +1,8 @@
--- Pg.99 seed: display rows transcribed verbatim from the production record
--- (UUID 1d199df8-61ad-4cf4-a2ea-38032ae9d020, created 2026-10-16) during the
--- from-scratch prod rebuild; only ids changed (stable slug ids). Backup of the
--- exported prod dump: /tmp/skramz-prod-backup-2026-10-20.sql (operator-held).
--- Roles and bio are unsourced display values carried over as-is; confirm them
--- with later evidence batches (002+), never by editing this file.
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=pg-99 N=001-band.sql`. Plain INSERTs on purpose:
--- a UNIQUE conflict means the record already exists, so merge by hand.
--- Fixed ids. Portable SQLite.
+-- Pg.99 display rows transcribed verbatim from the production record
+-- (UUID 1d199df8-61ad-4cf4-a2ea-38032ae9d020, created 2026-10-16); only ids
+-- changed to stable slug ids. Roles and bio are unsourced display values
+-- carried over as-is; confirm with later evidence batches, never by editing
+-- this file.
 INSERT INTO bands (id, name, name_norm, formed_year, disbanded_year, location, bio) VALUES
   ('band-pg-99', 'Pg.99', 'pg 99', 1997, 2003,
    'Sterling, Virginia, US',

@@ -5,10 +5,6 @@
 -- reunited November 2022); direct fetch currently 403s for bots.
 -- RateYourMusic stays out: no reachable page attests the slug — same rule as
 -- yaphet-kotto/002-links.sql.
--- Portal allowlist + https rule per api/seeds/band_links.sql.
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=saetia N=002-links.sql`. Plain INSERTs on purpose:
--- a UNIQUE conflict means the link is already there.
 INSERT INTO band_links (id, band_id, portal, url) VALUES
   ('saetia-bl-musicbrainz', 'band-saetia', 'musicbrainz', 'https://musicbrainz.org/artist/cd4f7c44-9ff3-4660-9f93-170fef83edfd'),
   ('saetia-bl-discogs', 'band-saetia', 'discogs', 'https://www.discogs.com/artist/1107526-Saetia');

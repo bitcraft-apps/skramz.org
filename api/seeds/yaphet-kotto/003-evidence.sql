@@ -6,9 +6,6 @@
 -- the cited source before its sentences count as confirmed.
 -- Entity ids are identical to 001-band.sql.
 -- Tiers per docs/content-policy.md. accessed_at is the live-verification date.
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=yaphet-kotto N=003-evidence.sql`. Plain INSERTs on
--- purpose: a UNIQUE conflict means the evidence is already there.
 INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, note) VALUES
   ('yaphet-kotto-cs-formed', 'band', 'band-yaphet-kotto', 'formed_year', '1996', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),

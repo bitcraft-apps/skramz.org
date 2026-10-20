@@ -1,20 +1,10 @@
--- Yaphet Kotto seed: union of the production record (UUID
--- 489c3264-bab9-48ed-994c-ff4a51df2427, created 2026-10-16) and the Phase 5
--- research seed (api/seeds/yaphet-kotto.sql, now retired): 11 members, 11 edges.
--- Display values are the production text verbatim (bio included); only ids
--- changed to stable slug ids, identical to the retired research seed so its
--- evidence rows apply unchanged as 003-evidence.sql.
--- Steve Roche is the shared member across Saetia and Yaphet Kotto: his member
--- row is canonical in saetia/001-band.sql (`saetia-m-steve-roche`); only the
--- edge lives here, carrying the role prod displayed (`bass`, unsourced).
--- Scott Batiste keeps `drums` (T1-attested, see 003). All other roles and
--- every join/leave year are NULL gaps. Manifest must apply saetia before
--- yaphet-kotto. Backup of the exported prod dump:
--- /tmp/skramz-prod-backup-2026-10-20.sql (operator-held).
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=yaphet-kotto N=001-band.sql`. Plain INSERTs on purpose:
--- a UNIQUE conflict means the record already exists, so merge by hand.
--- Fixed ids. Portable SQLite.
+-- Yaphet Kotto display rows: union of the production record (UUID
+-- 489c3264-bab9-48ed-994c-ff4a51df2427, created 2026-10-16) and the retired
+-- Phase 5 research seed: 11 members, 11 edges. Production text verbatim; stable
+-- slug ids identical to the retired seed so its evidence rows apply unchanged
+-- as 003-evidence.sql. Steve Roche edge points at `saetia-m-steve-roche`
+-- (canonical row in saetia/001-band.sql); apply saetia first. Scott Batiste
+-- keeps `drums` (T1-attested, see 003); other roles and years are NULL gaps.
 INSERT INTO bands (id, name, name_norm, formed_year, disbanded_year, location, bio) VALUES
   ('band-yaphet-kotto', 'Yaphet Kotto', 'yaphet kotto', 1996, 2005,
    'Santa Cruz, California, US',

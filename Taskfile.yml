@@ -70,32 +70,12 @@ tasks:
   evidence:
     desc: Apply a per-band evidence update to local D1, then fail on any _verify.sql row (usage task evidence BAND=<slug> N=<nnn-name.sql>)
     dir: api
-    cmds:
-      - |
-        if [ -z "{{.BAND}}" ] || [ -z "{{.N}}" ]; then echo "usage: task evidence BAND=<slug> N=<nnn-name.sql>" >&2; exit 2; fi
-        case "{{.BAND}}/{{.N}}" in
-          *..*|*/*/*) echo "refusing BAND/N with .. or extra separators: seeds/<slug>/<nnn-name.sql>" >&2; exit 2;;
-          *.sql) ;;
-          *) echo "refusing N without .sql suffix" >&2; exit 2;;
-        esac
-        pnpm exec wrangler d1 execute DB --local --file="seeds/{{.BAND}}/{{.N}}"
-        OUT=$(pnpm exec wrangler d1 execute DB --local --json --file=seeds/_verify.sql)
-        echo "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const rows=JSON.parse(s).flatMap(x=>x.results||[]);if(rows.length){for(const r of rows)console.log(JSON.stringify(r));console.error('evidence verify failed: '+rows.length+' row(s)');process.exit(1)}console.log('evidence verify clean')})"
+    cmd: ./scripts/apply-evidence.sh "{{.BAND}}" "{{.N}}" --local
 
   evidence:prod:
     desc: Apply a per-band evidence update to production (explicit only; usage task evidence:prod BAND=<slug> N=<nnn-name.sql>)
     dir: api
-    cmds:
-      - |
-        if [ -z "{{.BAND}}" ] || [ -z "{{.N}}" ]; then echo "usage: task evidence:prod BAND=<slug> N=<nnn-name.sql>" >&2; exit 2; fi
-        case "{{.BAND}}/{{.N}}" in
-          *..*|*/*/*) echo "refusing BAND/N with .. or extra separators: seeds/<slug>/<nnn-name.sql>" >&2; exit 2;;
-          *.sql) ;;
-          *) echo "refusing N without .sql suffix" >&2; exit 2;;
-        esac
-        pnpm exec wrangler d1 execute DB --remote --file="seeds/{{.BAND}}/{{.N}}"
-        OUT=$(pnpm exec wrangler d1 execute DB --remote --json --file=seeds/_verify.sql)
-        echo "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const rows=JSON.parse(s).flatMap(x=>x.results||[]);if(rows.length){for(const r of rows)console.log(JSON.stringify(r));console.error('evidence verify failed: '+rows.length+' row(s)');process.exit(1)}console.log('evidence verify clean')})"
+    cmd: ./scripts/apply-evidence.sh "{{.BAND}}" "{{.N}}" --remote
 
   scrape:
     desc: Run ingestion CLI (preview only unless confirmed with [Y/n])

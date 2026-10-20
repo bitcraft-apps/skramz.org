@@ -4,10 +4,6 @@
 -- Discogs artist entry (fetched, catalogue depth confirmed). RateYourMusic
 -- attested by operator screenshot of the live artist page on 2026-10-20
 -- (canonical URL below; challenge params stripped).
--- Portal allowlist + https rule per api/seeds/band_links.sql.
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=yaphet-kotto N=002-links.sql`. Plain INSERTs on purpose:
--- a UNIQUE conflict means the link is already there.
 INSERT INTO band_links (id, band_id, portal, url) VALUES
   ('yaphet-kotto-bl-musicbrainz', 'band-yaphet-kotto', 'musicbrainz', 'https://musicbrainz.org/artist/3e1051e0-140c-40b1-b77e-c058a9c6aa57'),
   ('yaphet-kotto-bl-discogs', 'band-yaphet-kotto', 'discogs', 'https://www.discogs.com/artist/445131-Yaphet-Kotto'),

@@ -1,16 +1,10 @@
--- Saetia seed: display rows transcribed verbatim from the production record
--- (UUID 738425d5-4033-4df1-85bd-6a984ef0830d, created 2026-10-16) during the
--- from-scratch prod rebuild; only ids changed (stable slug ids). Backup of the
--- exported prod dump: /tmp/skramz-prod-backup-2026-10-20.sql (operator-held).
--- Roles and bio are unsourced display values carried over as-is; confirm them
--- with later evidence batches (002+), never by editing this file.
--- Steve Roche is the shared member across Saetia and Yaphet Kotto: his member
--- row is canonical HERE (alphabetically first band); yaphet-kotto/001-band.sql
--- references this id for its edge. Manifest must apply saetia before yaphet-kotto.
--- Apply with `task bootstrap`, or singly with
--- `task evidence BAND=saetia N=001-band.sql`. Plain INSERTs on purpose: a UNIQUE
--- conflict means the record already exists, so merge by hand. Fixed ids.
--- Portable SQLite.
+-- Saetia display rows transcribed verbatim from the production record
+-- (UUID 738425d5-4033-4df1-85bd-6a984ef0830d, created 2026-10-16); only ids
+-- changed to stable slug ids. Roles and bio are unsourced display values
+-- carried over as-is; confirm with later evidence batches, never by editing
+-- this file.
+-- Steve Roche is shared with Yaphet Kotto: the canonical member row lives here;
+-- yaphet-kotto/001-band.sql references this id. Apply saetia first.
 INSERT INTO bands (id, name, name_norm, formed_year, disbanded_year, location, bio) VALUES
   ('band-saetia', 'Saetia', 'saetia', 1997, NULL,
    'New York City, US',
