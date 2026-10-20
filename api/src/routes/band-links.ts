@@ -11,7 +11,7 @@ export const PORTAL_HOSTS: Record<string, string[]> = {
 
 // https: + portal host match (apex or any subdomain). Returns null when valid.
 export function invalidBandLink(portal: unknown, url: unknown): string | null {
-  if (typeof portal !== "string" || !(portal in PORTAL_HOSTS)) {
+  if (typeof portal !== "string" || !Object.prototype.hasOwnProperty.call(PORTAL_HOSTS, portal)) {
     return "Field portal must be one of: musicbrainz, discogs, rym";
   }
   if (typeof url !== "string" || !url.trim()) {

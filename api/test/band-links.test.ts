@@ -141,6 +141,13 @@ describe("POST /api/band-links", () => {
     expect(res.status).toBe(422);
   });
 
+  it("rejects inherited-property portals without crashing (422, not 500)", async () => {
+    for (const portal of ["toString", "constructor", "__proto__"]) {
+      const res = await postLink({ band_id: "b1", portal, url: "https://www.discogs.com/artist/123" });
+      expect(res.status).toBe(422);
+    }
+  });
+
   it("rejects missing band links with FK 422 and no engine text", async () => {
     const res = await postLink({ band_id: "nope", portal: "rym", url: "https://rateyourmusic.com/artist/x" });
     expect(res.status).toBe(422);
