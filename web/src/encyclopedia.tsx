@@ -259,8 +259,187 @@ function freshnessText(updatedAt: unknown): string {
   return `updated ${Math.floor(hours / 24)}d ago`;
 }
 
-function EvidenceLedger({ sources }: { sources: ClaimSourceRow[] }) {
+type LedgerSection = "Band" | "Membership" | "Roles" | "Names" | "Other";
+
+// Ledger section for one claim row. Band-member membership rows name the
+// person; other band-member rows (roles) resolve through them.
+function ledgerSection(row: ClaimSourceRow): LedgerSection {
+  if (row.entity_type === "band") return "Band";
+  if (row.entity_type === "band_member") {
+    return row.field === "membership" ? "Membership" : "Roles";
+  }
+  if (row.entity_type === "member") return "Names";
+  return "Other";
+}
+
+// band_member rows carry the join id as entity_id, which the API strips from
+// the public member shape — so the person name resolves through the
+// membership rows' values instead of a join key.
+function buildLedgerLookups(
+  sources: ClaimSourceRow[],
+  members: Record<string, unknown>[],
+): {
+  personByBandMemberId: Map<string, string>;
+  nameByMemberId: Map<string, string>;
+  roleByPerson: Map<string, unknown>;
+} {
+  const personByBandMemberId = new Map<string, string>();
+  for (const row of sources) {
+    if (
+      row.entity_type === "band_member" &&
+      row.field === "membership" &&
+      typeof row.value === "string" &&
+      row.value
+    ) {
+      personByBandMemberId.set(row.entity_id, row.value);
+    }
+  }
+  const nameByMemberId = new Map<string, string>();
+  const roleByPerson = new Map<string, unknown>();
+  for (const m of members) {
+    if (typeof m.id === "string" && typeof m.name === "string") {
+      nameByMemberId.set(m.id, m.name);
+      roleByPerson.set(m.name, m.role ?? null);
+    }
+  }
+  return { personByBandMemberId, nameByMemberId, roleByPerson };
+}
+
+type LedgerLookups = ReturnType<typeof buildLedgerLookups>;
+
+// Display-table value a claim row competes against. Null confirms the current
+// display as-is (e.g. the bio confirmation row); anything else must match.
+function ledgerDisplayValue(
+  row: ClaimSourceRow,
+  band: Record<string, unknown>,
+  lookups: LedgerLookups,
+): unknown {
+  if (row.entity_type === "band") return band[row.field] ?? null;
+  if (row.entity_type === "band_member") {
+    const person = lookups.personByBandMemberId.get(row.entity_id);
+    if (row.field === "membership") {
+      return person && lookups.roleByPerson.has(person) ? person : null;
+    }
+    if (!person) return null;
+    return lookups.roleByPerson.get(person) ?? null;
+  }
+  if (row.entity_type === "member") {
+    return lookups.nameByMemberId.get(row.entity_id) ?? null;
+  }
+  return null;
+}
+
+// Winner = the displayed value. A null claim value attests the display as-is;
+// a null/blank display means no row wins (the page shows a gap).
+function isDisplayedValue(display: unknown, value: string | null): boolean {
+  if (value === null) return true;
+  if (display === null || display === undefined || display === "") return false;
+  return String(display) === String(value);
+}
+
+function ledgerSubject(
+  row: ClaimSourceRow,
+  lookups: LedgerLookups,
+): string | null {
+  if (row.entity_type === "band_member") {
+    return lookups.personByBandMemberId.get(row.entity_id) ?? null;
+  }
+  if (row.entity_type === "member") {
+    return lookups.nameByMemberId.get(row.entity_id) ?? row.value;
+  }
+  return null;
+}
+
+const SECTION_ORDER: LedgerSection[] = [
+  "Band",
+  "Membership",
+  "Roles",
+  "Names",
+  "Other",
+];
+
+// Stable user-meaningful sort: band fields first (section order), then member
+// rows alphabetical by person — never raw entity_type/entity_id order.
+function sortLedgerRows(
+  rows: ClaimSourceRow[],
+  lookups: LedgerLookups,
+): ClaimSourceRow[] {
+  const key = (row: ClaimSourceRow): string =>
+    ledgerSubject(row, lookups) ?? row.entity_id;
+  return [...rows].sort(
+    (a, b) =>
+      SECTION_ORDER.indexOf(ledgerSection(a)) -
+        SECTION_ORDER.indexOf(ledgerSection(b)) ||
+      key(a).localeCompare(key(b)) ||
+      a.field.localeCompare(b.field) ||
+      String(a.value ?? "").localeCompare(String(b.value ?? "")) ||
+      String(a.id).localeCompare(String(b.id)),
+  );
+}
+
+function LedgerRow({
+  row,
+  subject,
+  displayed,
+}: {
+  row: ClaimSourceRow;
+  subject: string | null;
+  displayed: boolean;
+}) {
+  return (
+    <li
+      key={String(row.id)}
+      className={`border-t-[3px] border-ink py-2 text-sm${displayed ? "" : " opacity-60"}`}
+    >
+      {subject !== null && <span className="font-bold">{subject} — </span>}
+      <span className="font-bold">{row.field}</span>{" "}
+      <span>{row.value ?? "—"}</span>{" "}
+      {displayed && (
+        <span
+          className="zine-border ml-2 inline-block px-1 text-xs font-bold uppercase"
+          title="displayed value shown on the page"
+        >
+          displayed
+        </span>
+      )}{" "}
+      <span className="uppercase">{String(row.status)}</span>{" "}
+      <span>{tierLabel(row.tier)}</span>{" "}
+      {row.source_url ? (
+        <a
+          href={row.source_url}
+          target="_blank"
+          rel="noreferrer"
+          className="font-bold underline hover:bg-acid"
+        >
+          {domainLabel(row.source_url)}
+        </a>
+      ) : (
+        <span>—</span>
+      )}{" "}
+      <span>{row.accessed_at ?? "—"}</span>
+    </li>
+  );
+}
+
+function EvidenceLedger({
+  sources,
+  band,
+  members,
+}: {
+  sources: ClaimSourceRow[];
+  band: Record<string, unknown>;
+  members: Record<string, unknown>[];
+}) {
   const disputed = sources.some((row) => row.status === "disputed");
+  const lookups = buildLedgerLookups(sources, members);
+  const rows = sortLedgerRows(sources, lookups);
+  const sections: { title: LedgerSection; rows: ClaimSourceRow[] }[] = [];
+  for (const row of rows) {
+    const title = ledgerSection(row);
+    const last = sections[sections.length - 1];
+    if (last && last.title === title) last.rows.push(row);
+    else sections.push({ title, rows: [row] });
+  }
   return (
     <section
       aria-label="sources"
@@ -275,32 +454,26 @@ function EvidenceLedger({ sources }: { sources: ClaimSourceRow[] }) {
             No sources recorded — all fields unconfirmed.
           </p>
         ) : (
-          <ul className="mt-2">
-            {sources.map((row) => (
-              <li
-                key={String(row.id)}
-                className="border-t-[3px] border-ink py-2 text-sm"
-              >
-                <span className="font-bold">{row.field}</span>{" "}
-                <span>{row.value ?? "—"}</span>{" "}
-                <span className="uppercase">{String(row.status)}</span>{" "}
-                <span>{tierLabel(row.tier)}</span>{" "}
-                {row.source_url ? (
-                  <a
-                    href={row.source_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-bold underline hover:bg-acid"
-                  >
-                    {domainLabel(row.source_url)}
-                  </a>
-                ) : (
-                  <span>—</span>
-                )}{" "}
-                <span>{row.accessed_at ?? "—"}</span>
-              </li>
-            ))}
-          </ul>
+          sections.map((section) => (
+            <div key={section.title}>
+              <h3 className="border-b-[3px] border-ink bg-acid px-2 py-1 text-xs font-bold uppercase">
+                {section.title}
+              </h3>
+              <ul className="mt-2">
+                {section.rows.map((row) => (
+                  <LedgerRow
+                    key={String(row.id)}
+                    row={row}
+                    subject={ledgerSubject(row, lookups)}
+                    displayed={isDisplayedValue(
+                      ledgerDisplayValue(row, band, lookups),
+                      row.value,
+                    )}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))
         )}
       </details>
     </section>
@@ -501,7 +674,7 @@ export function BandView() {
           <ListenList links={data.media_links} />
         </div>
       </section>
-      <EvidenceLedger sources={sources} />
+      <EvidenceLedger sources={sources} band={band} members={data.members} />
     </main>
   );
 }

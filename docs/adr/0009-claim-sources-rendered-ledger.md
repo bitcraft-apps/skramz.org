@@ -20,6 +20,16 @@ shipped behavior, keeping the part of 0005 that is still true.
   status, tier label, source link (hostname), and `accessed_at`; empty
   state reads "No sources recorded — all fields unconfirmed.". The
   section auto-opens on `disputed`.
+- Rows are grouped under subheads by entity kind (Band / Membership /
+  Roles / Names / Other), sorted band-first then alphabetical by person,
+  never in raw `entity_type, entity_id` order. Every non-band row names
+  its subject (membership/role rows resolve the person through the
+  membership rows' values, since the API strips `band_member_id` from
+  the public member shape — client-side lookup only, no API change).
+- The displayed (winning) value per field carries a `displayed` badge;
+  losing rivals render dimmed. Winners live in the display tables and
+  are matched at string level; a NULL claim value attests the display
+  as-is, and a NULL/blank display means no row wins.
 - `claim_sources.note` stays internal and is never rendered, per
   content-policy §7. The ledger SELECT omits the column and ledger
   rows never read it.
