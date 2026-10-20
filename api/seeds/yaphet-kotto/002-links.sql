@@ -1,0 +1,10 @@
+-- Yaphet Kotto links 002: external profile buttons for the Elsewhere strip.
+-- Only URLs verified live on 2026-10-20 are included: the MusicBrainz group
+-- page (API-checked: begin 1996, end 2005, begin-area Santa Cruz) and the
+-- Discogs artist entry (fetched, catalogue depth confirmed). RateYourMusic
+-- attested by operator screenshot of the live artist page on 2026-10-20
+-- (canonical URL below; challenge params stripped).
+INSERT INTO band_links (id, band_id, portal, url) VALUES
+  ('yaphet-kotto-bl-musicbrainz', 'band-yaphet-kotto', 'musicbrainz', 'https://musicbrainz.org/artist/3e1051e0-140c-40b1-b77e-c058a9c6aa57'),
+  ('yaphet-kotto-bl-discogs', 'band-yaphet-kotto', 'discogs', 'https://www.discogs.com/artist/445131-Yaphet-Kotto'),
+  ('yaphet-kotto-bl-rym', 'band-yaphet-kotto', 'rym', 'https://rateyourmusic.com/artist/yaphet-kotto/');

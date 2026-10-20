@@ -67,6 +67,16 @@ tasks:
     dir: api
     cmd: ./scripts/verify-fk-cascade.sh --remote
 
+  evidence:
+    desc: Apply a per-band evidence update to local D1, then fail on any _verify.sql row (usage task evidence BAND=<slug> N=<nnn-name.sql>)
+    dir: api
+    cmd: ./scripts/apply-evidence.sh "{{.BAND}}" "{{.N}}" --local
+
+  evidence:prod:
+    desc: Apply a per-band evidence update to production (explicit only; usage task evidence:prod BAND=<slug> N=<nnn-name.sql>)
+    dir: api
+    cmd: ./scripts/apply-evidence.sh "{{.BAND}}" "{{.N}}" --remote
+
   scrape:
     desc: Run ingestion CLI (preview only unless confirmed with [Y/n])
     dir: cli-agent
