@@ -23,23 +23,12 @@ shipped behavior, keeping the part of 0005 that is still true.
 - `claim_sources.note` stays internal and is never rendered, per
   content-policy §7. The ledger SELECT omits the column and ledger
   rows never read it.
-- One bounded lookup per band page: `GET /api/bands/:id` fans band,
-  member, `band_member`, release, and `media_link` refs into a single
-  `fetchClaimSources` call — one query over `idx_claim_sources_lookup`
-  with `LIMIT 200`. Sibling detail routes (`releases`, `members`,
-  `media-links`) reuse the same helper.
-- Winner-vs-rival contract: display tables keep the highest-tier
-  winning value with NULL as an honest gap; the sidecar keeps losing
-  rivals as `disputed` rows, never deleted. The client resolves a
-  per-field `confirmed` / `disputed` / `unconfirmed` marker and keeps
-  rivals visible in the ledger.
 
 ## Consequences
 
 - ADR-0005 stays as history; this record supersedes only its
-  "internal, never rendered" sentence for the sidecar as a whole.
-- No other ADR contradicts the ledger: 0006 leaves `claim_sources`
-  timestamps trigger-free, and 0008 routes evidence writes through
-  per-band `00N-evidence.sql` batches verified by `_verify.sql`.
+  "internal, never rendered" sentence for the sidecar as a whole. The
+  winner-vs-rival contract and bounded-lookup budget in 0005 are
+  unchanged.
 - No code, migration, or seed change; reads stay inside the free-tier
   budget (single `LIMIT`-bounded indexed lookup per page).
