@@ -13,3 +13,4 @@ Index:
 - [0005: Claim sources sidecar table](0005-claim-sources-sidecar.md) (proposed)
 - [0006: Freshness writes via triggers and parent touch](0006-freshness-triggers.md) (proposed)
 - [0007: Band external profile links](0007-band-external-links.md) (proposed)
+- [0008: Numbered per-band seed directories](0008-numbered-band-seeds.md) (proposed)

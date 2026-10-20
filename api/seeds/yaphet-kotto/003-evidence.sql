@@ -1,57 +1,28 @@
--- Yaphet Kotto seed: deepest-correct-record lineup (1 band, 10 members, 10 edges, 20 claims).
--- Display tables keep winning values only (NULL = visible gap); claim_sources holds all
--- evidence, including losing rivals (disputed) and T3 role leads (unconfirmed). Tiers,
--- URLs, and curator notes live on the rows below. Bio is own words, derived from them.
--- Apply once per database with `task seed SEED=yaphet-kotto.sql`. Plain INSERTs on
--- purpose: a UNIQUE conflict means the record already exists, so merge by hand.
--- Fixed ids. Portable SQLite.
-INSERT INTO bands (id, name, name_norm, formed_year, disbanded_year, location, bio) VALUES
-  ('band-yaphet-kotto', 'Yaphet Kotto', 'yaphet kotto', 1996, 2005,
-   'Santa Cruz / San Francisco, California',
-   'Emotive hardcore band from Santa Cruz, later based in San Francisco. Active 1996-2005. Three LPs on Ebullition plus splits and EPs.');
-
-INSERT INTO members (id, name, name_norm) VALUES
-  ('yaphet-kotto-m-austin-barber', 'Austin Barber', 'austin barber'),
-  ('yaphet-kotto-m-casey-watson', 'Casey Watson', 'casey watson'),
-  ('yaphet-kotto-m-chris-story', 'Chris Story', 'chris story'),
-  ('yaphet-kotto-m-jose-palafox', 'Jose Palafox', 'jose palafox'),
-  ('yaphet-kotto-m-keith-miller', 'Keith Miller', 'keith miller'),
-  ('yaphet-kotto-m-luke-clements', 'Luke Clements', 'luke clements'),
-  ('yaphet-kotto-m-mag-delana', 'Mag Delana', 'mag delana'),
-  ('yaphet-kotto-m-pat-crowley', 'Pat Crowley', 'pat crowley'),
-  ('yaphet-kotto-m-paul-cameron', 'Paul Cameron', 'paul cameron'),
-  ('yaphet-kotto-m-scott-batiste', 'Scott Batiste', 'scott batiste');
-
--- Only Scott Batiste clears the T1/T2 bar for a role (label catalog names him
--- on drums). All other roles and every join/leave year are NULL gaps.
-INSERT INTO band_members (id, band_id, member_id, role) VALUES
-  ('yaphet-kotto-bm-austin-barber', 'band-yaphet-kotto', 'yaphet-kotto-m-austin-barber', NULL),
-  ('yaphet-kotto-bm-casey-watson', 'band-yaphet-kotto', 'yaphet-kotto-m-casey-watson', NULL),
-  ('yaphet-kotto-bm-chris-story', 'band-yaphet-kotto', 'yaphet-kotto-m-chris-story', NULL),
-  ('yaphet-kotto-bm-jose-palafox', 'band-yaphet-kotto', 'yaphet-kotto-m-jose-palafox', NULL),
-  ('yaphet-kotto-bm-keith-miller', 'band-yaphet-kotto', 'yaphet-kotto-m-keith-miller', NULL),
-  ('yaphet-kotto-bm-luke-clements', 'band-yaphet-kotto', 'yaphet-kotto-m-luke-clements', NULL),
-  ('yaphet-kotto-bm-mag-delana', 'band-yaphet-kotto', 'yaphet-kotto-m-mag-delana', NULL),
-  ('yaphet-kotto-bm-pat-crowley', 'band-yaphet-kotto', 'yaphet-kotto-m-pat-crowley', NULL),
-  ('yaphet-kotto-bm-paul-cameron', 'band-yaphet-kotto', 'yaphet-kotto-m-paul-cameron', NULL),
-  ('yaphet-kotto-bm-scott-batiste', 'band-yaphet-kotto', 'yaphet-kotto-m-scott-batiste', 'drums');
-
--- Evidence sidecar. Tiers: 1 label/official, 2 reputable with history,
--- 3 community (lead only, never confirms).
+-- Yaphet Kotto evidence 003: confirmation batch carried over verbatim from the
+-- retired research seed (api/seeds/yaphet-kotto.sql), with two rebuild
+-- adjustments: the location claim value now matches the production display
+-- string (note keeps the source's actual wording), and the bio note flags that
+-- the display text changed in the rebuild and needs re-verification against
+-- the cited source before its sentences count as confirmed.
+-- 002 is reserved for band_links. Entity ids are identical to 001-band.sql.
+-- Tiers per docs/content-policy.md. accessed_at is the live-verification date.
+-- Apply with `task bootstrap`, or singly with
+-- `task evidence BAND=yaphet-kotto N=003-evidence.sql`. Plain INSERTs on
+-- purpose: a UNIQUE conflict means the evidence is already there.
 INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, note) VALUES
   ('yaphet-kotto-cs-formed', 'band', 'band-yaphet-kotto', 'formed_year', '1996', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),
   ('yaphet-kotto-cs-disbanded', 'band', 'band-yaphet-kotto', 'disbanded_year', '2005', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),
-  ('yaphet-kotto-cs-location', 'band', 'band-yaphet-kotto', 'location', 'Santa Cruz / San Francisco, California', 'confirmed', 1,
+  ('yaphet-kotto-cs-location', 'band', 'band-yaphet-kotto', 'location', 'Santa Cruz, California, US', 'confirmed', 1,
    'http://www.ebullition.com/catalog43.html', '2026-10-20',
    'Label catalog wording: originally hailing from Santa Cruz, now based in San Francisco.'),
   ('yaphet-kotto-cs-formed-rival', 'band', 'band-yaphet-kotto', 'formed_year', '~1997', 'disputed', 1,
    'http://www.ebullition.com/catalog43.html', '2026-10-20',
-   'Label copy on the 2004 LP says active for seven years, implying about 1997; kept as the losing rival.'),
+   'Label copy on the We Bury Our Dead Alive LP says active for seven years, implying about 1997; losing rival, display stays 1996 (derived values never displace directly attested ones).'),
   ('yaphet-kotto-cs-bio', 'band', 'band-yaphet-kotto', 'bio', NULL, 'confirmed', 1,
    'http://www.ebullition.com/catalog43.html', '2026-10-20',
-   'Own-words summary of the label catalog discography spine.'),
+   'Rebuild changed the display bio to the production text; re-verify each sentence against the label catalog before treating it as confirmed.'),
   ('yaphet-kotto-cs-mb-austin-barber', 'band_member', 'yaphet-kotto-bm-austin-barber', 'membership', 'Austin Barber', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),
   ('yaphet-kotto-cs-mb-casey-watson', 'band_member', 'yaphet-kotto-bm-casey-watson', 'membership', 'Casey Watson', 'confirmed', 2,
@@ -87,6 +58,3 @@ INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tie
   ('yaphet-kotto-cs-name-keith-b', 'member', 'yaphet-kotto-m-keith-miller', 'name', 'Keith Miller', 'disputed', 3,
    'https://en.wikipedia.org/wiki/Yaphet_Kotto_(band)', '2026-10-20',
    'Displayed spelling; community source, so the row stays disputed, not confirmed.');
-
--- Timestamps need no explicit writes: bands/claim_sources default to now(),
--- members/band_members self-stamp via the migration 0006 triggers.
