@@ -11,12 +11,27 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 export type BandLink = { portal: string; url: string };
 
+export type ClaimSourceRow = {
+  id: string;
+  entity_type: string;
+  entity_id: string;
+  field: string;
+  value: string | null;
+  status: string;
+  tier: number;
+  source_url: string | null;
+  accessed_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
 export type BandDetail = {
   data: Record<string, unknown>;
   members: Record<string, unknown>[];
   releases: Record<string, unknown>[];
   media_links: Record<string, unknown>[];
   links?: BandLink[];
+  sources: ClaimSourceRow[];
 };
 
 export type BandGraph = {

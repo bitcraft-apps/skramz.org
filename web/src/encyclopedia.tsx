@@ -1,6 +1,6 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useBand, useMember, useRelease, type BandLink } from "./hooks";
+import { useBand, useMember, useRelease, type BandLink, type ClaimSourceRow } from "./hooks";
 import { artUrl } from "./media";
 import { usePlayerStore } from "./stores/playerStore";
 
@@ -156,9 +156,166 @@ function year(value: unknown): string {
   return "";
 }
 
+type FieldStatus = "confirmed" | "unconfirmed" | "disputed";
+
+// Group claim rows for one band by field. Display values stay server-side;
+// the client only resolves a quiet per-field status from the rows.
+function groupBandSources(
+  sources: ClaimSourceRow[],
+  bandId: string,
+): Map<string, ClaimSourceRow[]> {
+  const groups = new Map<string, ClaimSourceRow[]>();
+  for (const row of sources) {
+    if (row.entity_type !== "band" || row.entity_id !== bandId) continue;
+    const list = groups.get(row.field);
+    if (list) list.push(row);
+    else groups.set(row.field, [row]);
+  }
+  return groups;
+}
+
+function fieldStatus(rows: ClaimSourceRow[] | undefined): FieldStatus {
+  if (!rows || rows.length === 0) return "unconfirmed";
+  if (rows.some((row) => row.status === "disputed")) return "disputed";
+  if (new Set(rows.map((row) => row.value ?? "—")).size > 1) return "disputed";
+  return "confirmed";
+}
+
+// Single hostname helper for tooltips + ledger links; null when missing
+// or unparseable (callers fall back to a neutral label, never raw URLs).
+function hostOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+function tierLabel(tier: number): string {
+  if (tier === 1) return "T1 authoritative";
+  if (tier === 2) return "T2 reputable";
+  return "T3 community";
+}
+
+// Ledger link text: hostname, or a neutral label when unparseable.
+function domainLabel(url: string | null): string {
+  return hostOf(url) ?? "source";
+}
+
+// Quiet per-field marker: compact glyphs for confirmed/unconfirmed, a small
+// text badge only for disputed (visible without hover, never color-only).
+function FieldMarker({
+  status,
+  domain,
+}: {
+  status: FieldStatus;
+  domain: string | null;
+}) {
+  if (status === "disputed") {
+    return (
+      <span
+        className="zine-border ml-2 inline-block bg-acid px-1 text-xs font-bold uppercase"
+        title="disputed: sources disagree, see sources below"
+      >
+        disputed
+      </span>
+    );
+  }
+  if (status === "unconfirmed") {
+    return (
+      <span
+        className="ml-2 inline-block text-xs font-bold uppercase"
+        title="unconfirmed: no source recorded"
+      >
+        ? unconfirmed
+      </span>
+    );
+  }
+  return (
+    <span
+      className="ml-2 inline-block text-xs font-bold"
+      title={domain ? `confirmed: ${domain}` : "confirmed"}
+      aria-label={domain ? `confirmed: ${domain}` : "confirmed"}
+    >
+      ✓
+    </span>
+  );
+}
+
+// Client-side relative freshness from the already-fetched band.updated_at.
+// Null, blank, or unparseable stays an honest gap: freshness unknown.
+function freshnessText(updatedAt: unknown): string {
+  if (typeof updatedAt !== "string" || !updatedAt.trim()) return "freshness unknown";
+  const parsed = Date.parse(updatedAt);
+  if (Number.isNaN(parsed)) return "freshness unknown";
+  const diffMs = Date.now() - parsed;
+  if (diffMs < 0) return "freshness unknown";
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "updated just now";
+  if (minutes < 60) return `updated ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `updated ${hours}h ago`;
+  return `updated ${Math.floor(hours / 24)}d ago`;
+}
+
+function EvidenceLedger({ sources }: { sources: ClaimSourceRow[] }) {
+  const disputed = sources.some((row) => row.status === "disputed");
+  return (
+    <section
+      aria-label="sources"
+      className="zine-border zine-shadow mt-4 bg-paper p-3"
+    >
+      <details open={disputed || undefined}>
+        <summary className="cursor-pointer text-sm font-bold uppercase">
+          sources ({sources.length})
+        </summary>
+        {sources.length === 0 ? (
+          <p className="mt-2 text-sm">
+            No sources recorded — all fields unconfirmed.
+          </p>
+        ) : (
+          <ul className="mt-2">
+            {sources.map((row) => (
+              <li
+                key={String(row.id)}
+                className="border-t-[3px] border-ink py-2 text-sm"
+              >
+                <span className="font-bold">{row.field}</span>{" "}
+                <span>{row.value ?? "—"}</span>{" "}
+                <span className="uppercase">{String(row.status)}</span>{" "}
+                <span>{tierLabel(row.tier)}</span>{" "}
+                {row.source_url ? (
+                  <a
+                    href={row.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-bold underline hover:bg-acid"
+                  >
+                    {domainLabel(row.source_url)}
+                  </a>
+                ) : (
+                  <span>—</span>
+                )}{" "}
+                <span>{row.accessed_at ?? "—"}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </section>
+  );
+}
+
 export function BandView() {
   const { id } = useParams();
   const { data, isPending, isError, isSuccess, refetch } = useBand(id);
+  const groups = useMemo(() => {
+    if (!data || !Array.isArray(data.sources)) {
+      return new Map<string, ClaimSourceRow[]>();
+    }
+    return groupBandSources(data.sources, str(data.data, "id"));
+  }, [data]);
   if (isPending) {
     return (
       <main>
@@ -186,12 +343,27 @@ export function BandView() {
   const location = str(band, "location").trim();
   const formed = year(band.formed_year);
   const disbanded = year(band.disbanded_year);
-  const meta = [
-    location,
-    formed && `formed ${formed}`,
-    disbanded && `disbanded ${disbanded}`,
-  ].filter(Boolean);
+  const sources: ClaimSourceRow[] = Array.isArray(data.sources)
+    ? data.sources
+    : [];
+  const statusOf = (field: string): FieldStatus =>
+    fieldStatus(groups.get(field));
+  const domainOf = (field: string): string | null => {
+    const rows = groups.get(field);
+    const row = rows?.find(
+      (r) => typeof r.source_url === "string" && r.source_url,
+    );
+    return hostOf(row?.source_url);
+  };
+  const metaSegments = [
+    location && { text: location, field: "location" },
+    formed && { text: `formed ${formed}`, field: "formed_year" },
+    disbanded && { text: `disbanded ${disbanded}`, field: "disbanded_year" },
+  ].filter(
+    (segment): segment is { text: string; field: string } => Boolean(segment),
+  );
   const bio = str(band, "bio").trim();
+  const bioStatus = statusOf("bio");
   const embeds = data.media_links
     .map(embedUrl)
     .filter((url): url is string => url !== null);
@@ -210,18 +382,46 @@ export function BandView() {
       >
         <h1 className="bg-ink text-paper inline-block px-2 py-1 text-2xl font-bold uppercase">
           {name}
+          <FieldMarker status={statusOf("name")} domain={domainOf("name")} />
         </h1>
-        {meta.length > 0 && (
-          <p className="mt-2 text-sm font-bold uppercase">{meta.join(" · ")}</p>
+        <p className="mt-2 text-xs">{freshnessText(band.updated_at)}</p>
+        {metaSegments.length > 0 && (
+          <p className="mt-2 text-sm font-bold uppercase">
+            {metaSegments.map((segment, index) => (
+              <span key={segment.field}>
+                {index > 0 && " · "}
+                {segment.text}
+                <FieldMarker
+                  status={statusOf(segment.field)}
+                  domain={domainOf(segment.field)}
+                />
+              </span>
+            ))}
+          </p>
         )}
         {photo && (
-          <img
-            src={photo}
-            alt={`${name} photo`}
-            className="zine-border zine-shadow-sm mt-3 w-full"
-          />
+          <>
+            <img
+              src={photo}
+              alt={`${name} photo`}
+              className="zine-border zine-shadow-sm mt-3 w-full"
+            />
+            <p className="mt-1 text-xs">
+              <FieldMarker status={statusOf("photo")} domain={domainOf("photo")} />
+            </p>
+          </>
         )}
-        {bio && <p className="mt-3 max-w-prose text-sm leading-relaxed">{bio}</p>}
+        {bio && (
+          <p className="mt-3 max-w-prose text-sm leading-relaxed">
+            {bio}
+            {bioStatus === "unconfirmed" && (
+              <span className="ml-2 text-xs font-bold uppercase">
+                reportedly — unconfirmed
+              </span>
+            )}
+            <FieldMarker status={bioStatus} domain={domainOf("bio")} />
+          </p>
+        )}
         {embeds.length > 0 && (
           <div className="mt-3">
             <button type="button" onClick={playFirst} className={BTN}>
@@ -298,6 +498,7 @@ export function BandView() {
           <ListenList links={data.media_links} />
         </div>
       </section>
+      <EvidenceLedger sources={sources} />
     </main>
   );
 }
