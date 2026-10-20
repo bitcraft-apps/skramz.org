@@ -213,3 +213,58 @@ describe("release listen section", () => {
     expect(usePlayerStore.getState().queue).toEqual([]);
   });
 });
+
+describe("band elsewhere strip", () => {
+  const linksPayload = {
+    ...bandPayload,
+    links: [
+      { portal: "musicbrainz", url: "https://musicbrainz.org/artist/1" },
+      { portal: "discogs", url: "https://www.discogs.com/artist/1-X" },
+      { portal: "rym", url: "https://rateyourmusic.com/artist/x" },
+    ],
+  };
+
+  it("renders 3 icon buttons with accessible names", async () => {
+    stubApi(linksPayload);
+    renderBand();
+    const strip = await screen.findByLabelText("elsewhere");
+    const buttons = within(strip).getAllByRole("link");
+    expect(buttons).toHaveLength(3);
+    expect(within(strip).getByRole("link", { name: "MusicBrainz" })).toHaveAttribute(
+      "href",
+      "https://musicbrainz.org/artist/1",
+    );
+    expect(within(strip).getByRole("link", { name: "Discogs" })).toHaveAttribute(
+      "href",
+      "https://www.discogs.com/artist/1-X",
+    );
+    expect(within(strip).getByRole("link", { name: "RateYourMusic" })).toHaveAttribute(
+      "href",
+      "https://rateyourmusic.com/artist/x",
+    );
+  });
+
+  it("opens links in a new tab with noopener", async () => {
+    stubApi(linksPayload);
+    renderBand();
+    const strip = await screen.findByLabelText("elsewhere");
+    for (const button of within(strip).getAllByRole("link")) {
+      expect(button).toHaveAttribute("target", "_blank");
+      expect(button.getAttribute("rel")).toContain("noopener");
+    }
+  });
+
+  it("hides the strip entirely when links is empty", async () => {
+    stubApi({ ...bandPayload, links: [] });
+    renderBand();
+    await screen.findByText("Probe Band");
+    expect(screen.queryByLabelText("elsewhere")).not.toBeInTheDocument();
+  });
+
+  it("hides the strip when the payload predates links", async () => {
+    stubApi(bandPayload);
+    renderBand();
+    await screen.findByText("Probe Band");
+    expect(screen.queryByLabelText("elsewhere")).not.toBeInTheDocument();
+  });
+});

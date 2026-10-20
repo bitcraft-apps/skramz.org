@@ -1,0 +1,11 @@
+-- Example external profile links. Copy to a per-band file and apply with
+-- `task seed SEED=<file>`, then `seeds/_verify.sql` must stay clean.
+-- Portal allowlist: musicbrainz (musicbrainz.org), discogs (discogs.com),
+-- rym (rateyourmusic.com). URLs must be https: and match the portal host.
+-- Every factual URL needs a legal source per docs/content-policy.md.
+-- Example (replace ids + urls):
+-- INSERT INTO band_links (id, band_id, portal, url) VALUES
+--   ('bl-orchid-mb', 'band-orchid-id', 'musicbrainz', 'https://musicbrainz.org/artist/<mbid>'),
+--   ('bl-orchid-dc', 'band-orchid-id', 'discogs', 'https://www.discogs.com/artist/<id>-Orchid'),
+--   ('bl-orchid-rym', 'band-orchid-id', 'rym', 'https://rateyourmusic.com/artist/orchid');
+SELECT 1;
