@@ -35,7 +35,7 @@ requests per page, `LIMIT`-bounded reads, portable SQLite.
   icon-map entry.
 - Reads: `GET /bands/:id` embeds `links: [{portal, url}]` (ordered,
   `LIMIT 50`) — no extra request.
-- Seeds: example inserts live commented in `api/seeds/band_links.sql`
+- Seeds: example inserts live commented in `api/seeds/templates/band_links.sql`
   (per-band files via `task seed`); `_verify.sql` rejects orphan
   `band_links` rows. Link URLs are factual claims, so writes follow
   `docs/content-policy.md`.

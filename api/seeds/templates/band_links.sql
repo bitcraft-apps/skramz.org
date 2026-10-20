@@ -1,5 +1,7 @@
--- Example external profile links. Copy to a per-band file and apply with
--- `task seed SEED=<file>`, then `seeds/_verify.sql` must stay clean.
+-- Example external profile links. Template only — copy to a per-band
+-- `002-links.sql`, never apply this file in place. Apply the copy with
+-- `task evidence BAND=<slug> N=002-links.sql`, then `seeds/_verify.sql`
+-- must stay clean.
 -- Portal allowlist: musicbrainz (musicbrainz.org), discogs (discogs.com),
 -- rym (rateyourmusic.com). URLs must be https: and match the portal host.
 -- Every factual URL needs a legal source per docs/content-policy.md.
