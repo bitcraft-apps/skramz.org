@@ -4,7 +4,7 @@
 -- string (note keeps the source's actual wording), and the bio note flags that
 -- the display text changed in the rebuild and needs re-verification against
 -- the cited source before its sentences count as confirmed.
--- 002 is reserved for band_links. Entity ids are identical to 001-band.sql.
+-- Entity ids are identical to 001-band.sql.
 -- Tiers per docs/content-policy.md. accessed_at is the live-verification date.
 -- Apply with `task bootstrap`, or singly with
 -- `task evidence BAND=yaphet-kotto N=003-evidence.sql`. Plain INSERTs on
