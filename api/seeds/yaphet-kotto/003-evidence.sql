@@ -1,9 +1,9 @@
 -- Yaphet Kotto evidence 003: confirmation batch carried over verbatim from the
--- retired research seed (api/seeds/yaphet-kotto.sql), with two rebuild
+-- retired research seed (api/seeds/yaphet-kotto.sql), with rebuild
 -- adjustments: the location claim value now matches the production display
--- string (note keeps the source's actual wording), and the bio row stays
--- unconfirmed: a 2026-10-20 re-check of the cited catalog attests origin,
--- tag and three LPs only — years and lyrical themes still need a source.
+-- string (note keeps the source's actual wording), and the bio row confirms
+-- across sources per its note: Punknews review for origin, tag and
+-- political/social lyrics; catalog for the three LPs; Discogs rows for years.
 -- Entity ids are identical to 001-band.sql.
 -- Tiers per docs/content-policy.md. accessed_at is the live-verification date.
 INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, note) VALUES
@@ -17,9 +17,9 @@ INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tie
   ('yaphet-kotto-cs-formed-rival', 'band', 'band-yaphet-kotto', 'formed_year', '~1997', 'disputed', 1,
    'http://www.ebullition.com/catalog43.html', '2026-10-20',
    'Label copy on the We Bury Our Dead Alive LP says active for seven years, implying about 1997; losing rival, display stays 1996 (derived values never displace directly attested ones).'),
-  ('yaphet-kotto-cs-bio', 'band', 'band-yaphet-kotto', 'bio', NULL, 'unconfirmed', 1,
-   'http://www.ebullition.com/catalog43.html', '2026-10-20',
-   'Rebuilt from the production text; re-checked 2026-10-20 against the catalog: Santa Cruz origin, emotive-hardcore tag and three Ebullition LPs (EB43/49/56) attest, but formed/disbanded years and lyrical themes are not on that page. Stays unconfirmed until every sentence is sourced.'),
+  ('yaphet-kotto-cs-bio', 'band', 'band-yaphet-kotto', 'bio', NULL, 'confirmed', 2,
+   'https://www.punknews.org/review/3778/yaphet-kotto-the-killer-was-in-the-government-blankets', '2026-10-20',
+   'Confirmed 2026-10-20 across sources: review attests Santa Cruz origin, emotive-hardcore tag and political/social lyrics (quotes Suffocate); catalog attests the three Ebullition LPs EB43/49/56; 1996-2005 per the Discogs year rows.'),
   ('yaphet-kotto-cs-mb-austin-barber', 'band_member', 'yaphet-kotto-bm-austin-barber', 'membership', 'Austin Barber', 'confirmed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20', NULL),
   ('yaphet-kotto-cs-mb-casey-watson', 'band_member', 'yaphet-kotto-bm-casey-watson', 'membership', 'Casey Watson', 'confirmed', 2,
