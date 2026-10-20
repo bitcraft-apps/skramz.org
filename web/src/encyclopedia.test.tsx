@@ -169,16 +169,53 @@ describe("band evidence", () => {
     sources: [],
   };
 
-  it("marks sourceless fields unconfirmed with hedged wording", async () => {
+  it("shows one notice instead of per-field markers when sourceless", async () => {
     stubApi(evidenceHero);
     renderBand();
     const hero = await screen.findByLabelText("band hero");
     expect(
-      within(hero).getAllByTitle("unconfirmed: no source recorded").length,
-    ).toBeGreaterThan(0);
-    expect(
-      within(hero).getByText("reportedly — unconfirmed"),
+      within(hero).getByText("no sources recorded — details unconfirmed"),
     ).toBeInTheDocument();
+    expect(
+      within(hero).queryAllByTitle("unconfirmed: no source recorded"),
+    ).toHaveLength(0);
+    expect(within(hero).queryByText(/reportedly/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a gap marker on unsourced fields once the record has sources", async () => {
+    stubApi({
+      ...bandPayload,
+      data: {
+        id: "b1",
+        name: "Probe Band",
+        location: "Portland",
+        formed_year: 1998,
+        updated_at: null,
+      },
+      sources: [
+        {
+          id: "c1",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "formed_year",
+          value: "1998",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-09-01",
+          created_at: "2026-09-01",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    expect(
+      within(hero).queryByText(/no sources recorded/),
+    ).not.toBeInTheDocument();
+    expect(
+      within(hero).getAllByTitle("unconfirmed: no source recorded"),
+    ).toHaveLength(1);
   });
 
   it("keeps the ledger collapsed with an empty state when sourceless", async () => {

@@ -363,7 +363,16 @@ export function BandView() {
     (segment): segment is { text: string; field: string } => Boolean(segment),
   );
   const bio = str(band, "bio").trim();
-  const bioStatus = statusOf("bio");
+  const hasSources = sources.length > 0;
+  // One quiet marker per field while the record has any sources (honest
+  // gaps). A sourceless record gets a single hero notice instead of the
+  // same badge repeated after every line — the ledger already says it all.
+  const markerFor = (field: string) => {
+    const status = statusOf(field);
+    if (status === "unconfirmed" && !hasSources) return null;
+    return <FieldMarker status={status} domain={domainOf(field)} />;
+  };
+  const photoMarker = markerFor("photo");
   const embeds = data.media_links
     .map(embedUrl)
     .filter((url): url is string => url !== null);
@@ -382,19 +391,20 @@ export function BandView() {
       >
         <h1 className="bg-ink text-paper inline-block px-2 py-1 text-2xl font-bold uppercase">
           {name}
-          <FieldMarker status={statusOf("name")} domain={domainOf("name")} />
         </h1>
         <p className="mt-2 text-xs">{freshnessText(band.updated_at)}</p>
+        {!hasSources && (
+          <p className="mt-2 text-xs font-bold uppercase">
+            no sources recorded — details unconfirmed
+          </p>
+        )}
         {metaSegments.length > 0 && (
           <p className="mt-2 text-sm font-bold uppercase">
             {metaSegments.map((segment, index) => (
               <span key={segment.field}>
                 {index > 0 && " · "}
                 {segment.text}
-                <FieldMarker
-                  status={statusOf(segment.field)}
-                  domain={domainOf(segment.field)}
-                />
+                {markerFor(segment.field)}
               </span>
             ))}
           </p>
@@ -406,20 +416,13 @@ export function BandView() {
               alt={`${name} photo`}
               className="zine-border zine-shadow-sm mt-3 w-full"
             />
-            <p className="mt-1 text-xs">
-              <FieldMarker status={statusOf("photo")} domain={domainOf("photo")} />
-            </p>
+            {photoMarker && <p className="mt-1 text-xs">{photoMarker}</p>}
           </>
         )}
         {bio && (
           <p className="mt-3 max-w-prose text-sm leading-relaxed">
             {bio}
-            {bioStatus === "unconfirmed" && (
-              <span className="ml-2 text-xs font-bold uppercase">
-                reportedly — unconfirmed
-              </span>
-            )}
-            <FieldMarker status={bioStatus} domain={domainOf("bio")} />
+            {markerFor("bio")}
           </p>
         )}
         {embeds.length > 0 && (
