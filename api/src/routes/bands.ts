@@ -12,13 +12,6 @@ import {
   requireAuth,
 } from "../lib/http";
 
-function invalidMemberRole(value: unknown): boolean {
-  // band_members.role is nullable (NULL = honest gap, no role claimed); a
-  // present value is trimmed + lowercased and must be in the flat vocabulary.
-  if (value === undefined || value === null) return false;
-  return !(typeof value === "string" && (MEMBER_ROLES as readonly string[]).includes(value.trim().toLowerCase()));
-}
-
 export function registerBands(app: App): void {
   // GET /api/bands?search=&limit=&cursor= — LIKE on name_norm (idx_bands_norm).
   // Cursor is the last-seen row id (`WHERE id > ? ORDER BY id`).
@@ -199,15 +192,27 @@ export function registerBands(app: App): void {
     if (!member) {
       return c.json({ error: { code: "not_found", message: "Member not found" } }, 404);
     }
-    if (invalidMemberRole(parsed.body.role)) {
-      return c.json(
-        { error: { code: "invalid", message: `role must be one of ${MEMBER_ROLES.join(", ")}` } },
-        422,
-      );
-    }
     // One row per role: a person with N roles gets N band_members rows
     // (grouping is client-side; the GET shape is unchanged).
-    const role = parsed.body.role == null ? null : String(parsed.body.role).trim().toLowerCase();
+    // NULL = honest gap, no role claimed; a present value is trimmed +
+    // lowercased once and must be in the flat vocabulary.
+    const rawRole = parsed.body.role;
+    let role: string | null = null;
+    if (rawRole !== undefined && rawRole !== null) {
+      if (typeof rawRole !== "string") {
+        return c.json(
+          { error: { code: "invalid", message: `role must be one of ${MEMBER_ROLES.join(", ")}` } },
+          422,
+        );
+      }
+      role = rawRole.trim().toLowerCase();
+      if (!(MEMBER_ROLES as readonly string[]).includes(role)) {
+        return c.json(
+          { error: { code: "invalid", message: `role must be one of ${MEMBER_ROLES.join(", ")}` } },
+          422,
+        );
+      }
+    }
     const row = {
       id: crypto.randomUUID(),
       band_id: id,

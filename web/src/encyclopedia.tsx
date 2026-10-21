@@ -23,17 +23,18 @@ function roleIndex(role: string): number {
   return index === -1 ? ROLE_ORDER.length : index;
 }
 
-type RoleGroup = { id: string; name: string; roles: string[] };
+type RoleGroup = { id: string; name: string; roles: string[]; photo_r2_key?: unknown };
 
 // Group flat membership rows (one row per role) into one entry per person,
 // collecting roles in canonical order. NULL/blank roles stay honest gaps.
+// First row wins for passthrough fields like photo_r2_key.
 function groupRoleRows(rows: Record<string, unknown>[]): RoleGroup[] {
   const byId = new Map<string, RoleGroup>();
   for (const row of rows) {
     if (typeof row.id !== "string" || typeof row.name !== "string") continue;
     let person = byId.get(row.id);
     if (!person) {
-      person = { id: row.id, name: row.name, roles: [] };
+      person = { id: row.id, name: row.name, roles: [], photo_r2_key: row.photo_r2_key };
       byId.set(row.id, person);
     }
     if (typeof row.role === "string") {
@@ -42,7 +43,7 @@ function groupRoleRows(rows: Record<string, unknown>[]): RoleGroup[] {
     }
   }
   for (const person of byId.values()) {
-    person.roles.sort((a, b) => roleIndex(a) - roleIndex(b) || (a < b ? -1 : 1));
+    person.roles.sort((a, b) => roleIndex(a) - roleIndex(b));
   }
   return [...byId.values()];
 }
@@ -884,17 +885,13 @@ export function MemberView() {
   const { id } = useParams();
   const { data, isSuccess } = useMember(id);
   if (!isSuccess) return <main>loading</main>;
-  const photos = new Map<string, unknown>();
-  for (const b of data.bands) {
-    if (typeof b.id === "string" && !photos.has(b.id)) photos.set(b.id, b.photo_r2_key);
-  }
   return (
     <main>
       <h1>{str(data.data, "name")}</h1>
       <h2>bands</h2>
       <ul>
         {groupRoleRows(data.bands).map((band) => {
-          const photo = artUrl(photos.get(band.id));
+          const photo = artUrl(band.photo_r2_key);
           return (
             <li
               key={band.id}
