@@ -198,11 +198,6 @@ function tierLabel(tier: number): string {
   return "T3 community";
 }
 
-// Ledger link text: hostname, or a neutral label when unparseable.
-function domainLabel(url: string | null): string {
-  return hostOf(url) ?? "source";
-}
-
 // Quiet per-field marker: compact glyphs for confirmed/unconfirmed, a small
 // text badge only for disputed (visible without hover, never color-only).
 function FieldMarker({
@@ -411,7 +406,7 @@ function ledgerRowState(
 function sortLedgerRows(
   rows: ClaimSourceRow[],
   lookups: LedgerLookups,
-  displayOf: (row: ClaimSourceRow) => unknown = () => null,
+  displayOf: (row: ClaimSourceRow) => unknown,
 ): ClaimSourceRow[] {
   const subjectOf = (row: ClaimSourceRow): string =>
     ledgerSubject(row, lookups) ?? row.entity_id;
@@ -509,7 +504,7 @@ function LedgerRow({
             rel="noreferrer"
             className="font-bold underline hover:bg-acid"
           >
-            {domainLabel(row.source_url)}
+            {hostOf(row.source_url) ?? "source"}
           </a>
         ) : (
           <span>—</span>
