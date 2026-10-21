@@ -84,7 +84,9 @@ is bundled and the URL is greppable in `dist/` — the build log's
    curl -s "https://skramz.org$BUNDLE" | grep -o static.cloudflareinsights.com
    ```
 5. Verify in dashboard (allow a few minutes): pageviews on route
-   changes, referrers, countries, Core Web Vitals.
+   changes, referrers, countries, Core Web Vitals. Preview builds share
+   the same token, so workers.dev hits appear under that hostname —
+   filter by hostname to split staging from production.
 
 Accepted limits: cookieless/GDPR-friendly, no consent banner; sampled
 stats (~10%), ~6 months retention; no custom events, funnels, or UTM
