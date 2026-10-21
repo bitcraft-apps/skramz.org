@@ -52,6 +52,44 @@ is bundled and the URL is greppable in `dist/` — the build log's
    Workers & Pages → `skramz-web` → Delete). No dual-host period beyond
    the cutover (ADR-0004 Q2).
 
+## Web Analytics (cookieless pageviews, free tier)
+
+- **Beacon:** `web/src/analytics.ts` (`initWebAnalytics`, called from
+  `web/src/main.tsx`) injects
+  `https://static.cloudflareinsights.com/beacon.min.js` once, before the
+  React tree mounts. Reports go to Cloudflare's beacon host, never to the
+  Workers/D1 stack — zero request/CPU/row-read quota impact.
+- **Token:** public site token baked at build time via
+  `VITE_CF_BEACON_TOKEN` (`.env.example`, `deploy-web.yml` reads GitHub
+  secret `CLOUDFLARE_BEACON_TOKEN`). Empty token stays silent: no beacon
+  in local dev or token-less previews.
+- **SPA route changes:** tracked automatically by the beacon (Soft
+  Navigations / Navigation API / patched `pushState` + `popstate`). No
+  manual pageview calls; the payload never sets `"spa": false`.
+- **`api.skramz.org` excluded:** the API Worker ships no snippet and is
+  never added as an Analytics site, so API calls never pollute pageviews.
+
+## Dashboard runbook (account owner only)
+
+1. Web Analytics page → **Add a site** → hostname `skramz.org` → **Done**.
+2. **Manage site** → choose **Enable with JS Snippet installation**
+   (manual mode — the snippet already ships in code; automatic injection
+   on top would double-count pageviews). Copy the site token.
+3. GitHub → repo Settings → Secrets → add `CLOUDFLARE_BEACON_TOKEN`
+   with the token value (public id, safe to bake into `dist/`).
+4. Merge to `main`; confirm the beacon ships (runtime-injected, so it
+   lives in the JS bundle, not `index.html`):
+   ```bash
+   BUNDLE=$(curl -s https://skramz.org | grep -o '/assets/index-[^"]*\.js' | head -1)
+   curl -s "https://skramz.org$BUNDLE" | grep -o static.cloudflareinsights.com
+   ```
+5. Verify in dashboard (allow a few minutes): pageviews on route
+   changes, referrers, countries, Core Web Vitals.
+
+Accepted limits: cookieless/GDPR-friendly, no consent banner; sampled
+stats (~10%), ~6 months retention; no custom events, funnels, or UTM
+reports.
+
 ## API CORS (verified in code, not dashboard)
 
 Allows exactly apex + `www` (`api/src/index.ts`, tested in
