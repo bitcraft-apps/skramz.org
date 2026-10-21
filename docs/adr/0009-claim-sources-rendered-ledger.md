@@ -20,6 +20,36 @@ shipped behavior, keeping the part of 0005 that is still true.
   status, tier label, source link (hostname), and `accessed_at`; empty
   state reads "No sources recorded — all fields unconfirmed.". The
   section auto-opens on `disputed`.
+- Rows are grouped under subheads by entity kind (Band / Membership /
+  Roles / Names / Other) with per-section counts, sorted band-first
+  then alphabetical by person, never in raw `entity_type, entity_id`
+  order. Every non-band row names its subject (membership/role rows
+  resolve the person through the membership rows' values, since the API
+  strips `band_member_id` from the public member shape — client-side
+  lookup only, no API change). Membership collapses behind a native
+  disclosure by default; the outer section keeps its auto-open-on-
+  disputed behavior.
+- Raw field tokens never reach the UI: one lookup map renders human
+  labels (Formed, Disbanded, Member, Role, Name, Bio, Location) with a
+  raw-token fallback. Subject === value names the person once; name
+  rivals read `subject — claimed "value"` so typo rows are unambiguous.
+- Three row states replace the binary dim. `on page` (winner: value
+  matches display, badge right after the value, full weight). `rival`
+  (display non-blank and value differs: indented, dimmed — the only
+  dimmed state — plus a text marker, never dimming alone). `lead`
+  (sole claim against a blank/NULL display: full weight, no badge, no
+  dim, marked `lead`). Winners live in the display tables and are
+  matched at string level. Within each field group the winner leads,
+  rivals follow alphabetical, NULL attestations last; the Band section
+  follows page order (name/bio/location/formed/disbanded, alpha
+  fallback). A winner in a rival-carrying group adds "currently shown
+  but disputed" instead of a second badge. Every row carries an
+  `aria-label` restating its state; no `title`-only communication.
+- A NULL claim value attests the display as-is and renders "attests
+  current text" with the badge, never a badged em-dash. Against a
+  blank display there is nothing to attest, so the row reads as an
+  unbadged lead ("no text on page") — reconciling the NULL-attestation
+  follow-up (#115) by refusing to crown a blank.
 - `claim_sources.note` stays internal and is never rendered, per
   content-policy §7. The ledger SELECT omits the column and ledger
   rows never read it.

@@ -413,3 +413,345 @@ describe("band elsewhere strip", () => {
     expect(screen.queryByLabelText("elsewhere")).not.toBeInTheDocument();
   });
 });
+
+describe("sources ledger grouping", () => {
+  const ledgerPayload = {
+    ...bandPayload,
+    data: {
+      id: "b1",
+      name: "Probe Band",
+      formed_year: 1996,
+      location: "Probe Town",
+      updated_at: null,
+    },
+    members: [
+      { id: "m-chris", name: "Chris Story", role: null },
+      { id: "m-scott", name: "Scott Batiste", role: "drums" },
+      { id: "m-keith", name: "Keith Miller", role: null },
+    ],
+    // Scrambled on purpose: non-band rows first, people out of order —
+    // the ledger must not render raw DB order.
+    sources: [
+      {
+        id: "c-role-chris",
+        entity_type: "band_member",
+        entity_id: "bm-chris",
+        field: "role",
+        value: "bass",
+        status: "unconfirmed",
+        tier: 3,
+        source_url: null,
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-name-b",
+        entity_type: "member",
+        entity_id: "m-keith",
+        field: "name",
+        value: "Keith Miller",
+        status: "disputed",
+        tier: 3,
+        source_url: "https://wiki.example/keith",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-mb-scott",
+        entity_type: "band_member",
+        entity_id: "bm-scott",
+        field: "membership",
+        value: "Scott Batiste",
+        status: "confirmed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-formed-rival",
+        entity_type: "band",
+        entity_id: "b1",
+        field: "formed_year",
+        value: "~1997",
+        status: "disputed",
+        tier: 1,
+        source_url: "https://label.example/catalog",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-mb-chris",
+        entity_type: "band_member",
+        entity_id: "bm-chris",
+        field: "membership",
+        value: "Chris Story",
+        status: "confirmed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-role-scott",
+        entity_type: "band_member",
+        entity_id: "bm-scott",
+        field: "role",
+        value: "drums",
+        status: "confirmed",
+        tier: 1,
+        source_url: "https://label.example/catalog",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-formed",
+        entity_type: "band",
+        entity_id: "b1",
+        field: "formed_year",
+        value: "1996",
+        status: "confirmed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-name-a",
+        entity_type: "member",
+        entity_id: "m-keith",
+        field: "name",
+        value: "Keith Milller",
+        status: "disputed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+    ],
+  };
+
+  function ledgerItems(ledger: HTMLElement): HTMLElement[] {
+    return within(ledger).getAllByRole("listitem");
+  }
+
+  function rowWith(items: HTMLElement[], ...needles: string[]): HTMLElement {
+    const found = items.find((li) =>
+      needles.every((n) => (li.textContent ?? "").includes(n)),
+    );
+    expect(found).toBeDefined();
+    return found!;
+  }
+
+  it("groups rows under entity subheads instead of one flat list", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const heads = within(ledger)
+      .getAllByRole("heading")
+      .map((h) => h.textContent);
+    expect(heads).toEqual([
+      "Band (2)",
+      "Membership (2)",
+      "Roles (2)",
+      "Names (2)",
+    ]);
+  });
+
+  it("names the subject on every non-band row with no adjacency guessing", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    // Role rows resolve to a person through the membership rows, not the
+    // stripped join key and not list adjacency.
+    expect(
+      rowWith(items, "Chris Story", "Role", "bass").textContent,
+    ).toContain("Chris Story");
+    expect(
+      rowWith(items, "Scott Batiste", "Role", "drums").textContent,
+    ).toContain("Scott Batiste");
+    expect(
+      rowWith(items, "Keith Milller").textContent,
+    ).toContain("Keith Miller");
+  });
+
+  it("marks the on-page value and dims only true rivals", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const yearWinner = rowWith(items, "Formed", "1996");
+    expect(yearWinner.textContent).toContain("on page");
+    expect(yearWinner.className).not.toContain("opacity-60");
+    const yearLoser = rowWith(items, "~1997");
+    expect(yearLoser.textContent).not.toContain("on page");
+    expect(yearLoser.textContent).toContain("rival");
+    expect(yearLoser.className).toContain("opacity-60");
+    const nameWinner = items.find(
+      (li) =>
+        (li.textContent ?? "").includes("Keith Miller") &&
+        !(li.textContent ?? "").includes("Milller"),
+    );
+    expect(nameWinner?.textContent).toContain("on page");
+    const nameLoser = rowWith(items, "Milller");
+    expect(nameLoser.textContent).not.toContain("on page");
+    expect(nameLoser.textContent).toContain("rival");
+    expect(nameLoser.className).toContain("opacity-60");
+    // Displayed role wins; the unconfirmed lead is not a loser (see below).
+    expect(
+      rowWith(items, "Scott Batiste", "drums").textContent,
+    ).toContain("on page");
+  });
+
+  it("sorts band fields first, then member rows alphabetically", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger).map((li) => li.textContent ?? "");
+    // Band rows first despite scrambled input order.
+    expect(items[0]).toContain("Formed");
+    const membership = items.filter((t) => t.includes("— Member"));
+    expect(membership).toHaveLength(2);
+    expect(membership[0]).toContain("Chris Story");
+    expect(membership[1]).toContain("Scott Batiste");
+  });
+
+  it("renders a membership name once instead of stuttering subject and value", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const row = rowWith(items, "Chris Story", "Member");
+    const hits = (row.textContent ?? "").match(/Chris Story/g) ?? [];
+    expect(hits).toHaveLength(1);
+    expect(row.textContent).toContain("on page");
+  });
+
+  it("treats a sole claim against a blank display as a lead, never dimmed", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const lead = rowWith(items, "Chris Story", "bass");
+    expect(lead.textContent).toContain("lead");
+    expect(lead.textContent).not.toContain("on page");
+    expect(lead.className).not.toContain("opacity-60");
+  });
+
+  it("orders winners before rivals inside each field group", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const texts = ledgerItems(ledger).map((li) => li.textContent ?? "");
+    const yearWinner = texts.findIndex(
+      (t) => t.includes("Formed") && t.includes("1996"),
+    );
+    const yearRival = texts.findIndex((t) => t.includes("~1997"));
+    expect(yearWinner).toBeGreaterThanOrEqual(0);
+    expect(yearRival).toBeGreaterThanOrEqual(0);
+    expect(yearWinner).toBeLessThan(yearRival);
+    const nameWinner = texts.findIndex(
+      (t) => t.includes("Keith Miller") && !t.includes("Milller"),
+    );
+    const nameRival = texts.findIndex((t) => t.includes("Milller"));
+    expect(nameWinner).toBeGreaterThanOrEqual(0);
+    expect(nameWinner).toBeLessThan(nameRival);
+  });
+
+  it("uses human labels, never raw field tokens", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const text = ledger.textContent ?? "";
+    expect(text).toContain("Formed");
+    expect(text).toContain("Member");
+    expect(text).toContain("Role");
+    expect(text).toContain("Name");
+    expect(text).not.toContain("formed_year");
+    expect(text).not.toContain("band_member");
+  });
+
+  it("separates a name claim from its subject so a typo row is unambiguous", async () => {
+    stubApi(ledgerPayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(rowWith(items, "Milller").textContent).toContain(
+      "claimed “Keith Milller”",
+    );
+  });
+
+  it("renders a NULL attestation as attested text, never a badged em-dash", async () => {
+    stubApi({
+      ...bandPayload,
+      data: {
+        ...bandPayload.data,
+        bio: "Loud basement trio.",
+        updated_at: null,
+      },
+      sources: [
+        {
+          id: "c-bio",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: null,
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-09-01",
+          created_at: "2026-09-01",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("attests current text");
+    expect(items[0].textContent).toContain("on page");
+    expect(items[0].textContent).not.toContain("—");
+  });
+
+  it("leaves a NULL attestation over a blank display unbadged", async () => {
+    stubApi({
+      ...bandPayload,
+      data: { ...bandPayload.data, bio: null, updated_at: null },
+      sources: [
+        {
+          id: "c-bio",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: null,
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: null,
+          created_at: "2026-09-01",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("lead");
+    expect(items[0].textContent).toContain("no text on page");
+    expect(
+      within(items[0]).queryByText("on page", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+});
