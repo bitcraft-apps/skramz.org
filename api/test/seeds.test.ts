@@ -31,24 +31,29 @@ const seedsDir = join(here, "..", "seeds");
 // Shared members first, then band files in an order that proves no sibling
 // dependency: yaphet-kotto applies before saetia even though Steve Roche
 // plays in both (his row lives in the shared seed, not in saetia's file).
-const SEED_ORDER = [
+// Member-id assertions only need person rows + edges; the full order below
+// additionally covers links/evidence for the clean-verify test.
+const CORE_SEEDS = [
   ["members", "001-shared.sql"],
   ["pg-99", "001-band.sql"],
   ["yaphet-kotto", "001-band.sql"],
   ["saetia", "001-band.sql"],
+] as const;
+const SEED_ORDER = [
+  ...CORE_SEEDS,
   ["pg-99", "002-links.sql"],
   ["yaphet-kotto", "002-links.sql"],
   ["saetia", "002-links.sql"],
   ["yaphet-kotto", "003-evidence.sql"],
 ] as const;
 
-function seededDb(): Db {
+function seededDb(order: readonly (readonly [string, string])[] = SEED_ORDER): Db {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON;");
   for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()) {
     db.exec(readFileSync(join(migrationsDir, file), "utf8"));
   }
-  for (const [band, name] of SEED_ORDER) {
+  for (const [band, name] of order) {
     db.exec(readFileSync(join(seedsDir, band, name), "utf8"));
   }
   return db;
@@ -65,14 +70,19 @@ function verifyRows(db: Db): Record<string, unknown>[] {
 describe("seeds (real seed files applied shared-first to local SQLite/D1-like DB)", () => {
   let db: Db;
   beforeEach(() => {
-    db = seededDb();
+    db = seededDb(CORE_SEEDS);
   });
   afterEach(() => {
     db.close();
   });
 
   it("verifies clean: no orphan edges, no orphan evidence", () => {
-    expect(verifyRows(db)).toEqual([]);
+    const full = seededDb();
+    try {
+      expect(verifyRows(full)).toEqual([]);
+    } finally {
+      full.close();
+    }
   });
 
   it("shares one neutral person row across Saetia and Yaphet Kotto", () => {
