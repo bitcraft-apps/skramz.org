@@ -13,20 +13,10 @@ function str(record: Record<string, unknown>, key: string): string {
 }
 
 // Flat role vocabulary, mirroring MEMBER_ROLES in api/src/lib/http.ts:
-// stored lowercase, one membership row per role. List order is the canonical
+// only roles already in use (extend both when a new one appears in data).
+// Stored lowercase, one membership row per role; list order is the canonical
 // display order (vocals first, never alphabetical).
-const ROLE_ORDER = [
-  "vocals",
-  "guitar",
-  "bass",
-  "drums",
-  "keys",
-  "sax",
-  "trumpet",
-  "violin",
-  "electronics",
-  "turntables",
-];
+const ROLE_ORDER = ["vocals", "guitar", "bass", "drums"];
 
 function roleIndex(role: string): number {
   const index = ROLE_ORDER.indexOf(role);

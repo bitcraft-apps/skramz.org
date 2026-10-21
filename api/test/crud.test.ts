@@ -130,7 +130,7 @@ describe("issue #8: ingestion-token auth", () => {
   });
 
   it("out-of-dict role returns 422", async () => {
-    for (const role of ["rhythm guitar", "bass, guitar", "guitar/vocals", "theremin", "", 42]) {
+    for (const role of ["rhythm guitar", "bass, guitar", "guitar/vocals", "keys", "theremin", "", 42]) {
       const res = await app.request(
         "/api/bands/b1/members",
         {
