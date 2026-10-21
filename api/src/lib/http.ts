@@ -7,6 +7,22 @@ type AppContext = Context<{ Bindings: Bindings }>;
 
 export const RELEASE_TYPES = ["LP", "EP", "Split", "Demo", "Single", "Compilation"] as const;
 
+// Flat controlled vocabulary for band_members.role. Stored lowercase, one
+// value per row (NULL = no role claimed); list order is the canonical
+// display order (vocals first, never alphabetical).
+export const MEMBER_ROLES = [
+  "vocals",
+  "guitar",
+  "bass",
+  "drums",
+  "keys",
+  "sax",
+  "trumpet",
+  "violin",
+  "electronics",
+  "turntables",
+] as const;
+
 export const MAX_LIMIT = 50;
 export const DEFAULT_LIMIT = 20;
 

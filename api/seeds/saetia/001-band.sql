@@ -21,7 +21,8 @@ INSERT INTO members (id, name, name_norm) VALUES
 INSERT INTO band_members (id, band_id, member_id, role) VALUES
   ('saetia-bm-adam-marino', 'band-saetia', 'saetia-m-adam-marino', 'guitar'),
   ('saetia-bm-billy-werner', 'band-saetia', 'saetia-m-billy-werner', 'vocals'),
-  ('saetia-bm-colin-bartoldus', 'band-saetia', 'saetia-m-colin-bartoldus', 'bass, guitar'),
+  ('saetia-bm-colin-bartoldus-bass', 'band-saetia', 'saetia-m-colin-bartoldus', 'bass'),
+  ('saetia-bm-colin-bartoldus-guitar', 'band-saetia', 'saetia-m-colin-bartoldus', 'guitar'),
   ('saetia-bm-greg-drudy', 'band-saetia', 'saetia-m-greg-drudy', 'drums'),
   ('saetia-bm-jamie-behar', 'band-saetia', 'saetia-m-jamie-behar', 'guitar'),
   ('saetia-bm-steve-roche', 'band-saetia', 'saetia-m-steve-roche', 'bass');
