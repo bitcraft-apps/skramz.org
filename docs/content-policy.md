@@ -66,7 +66,7 @@ Seeds are per-environment starter records, applied explicitly with
 `task evidence:prod` (per-band files at `api/seeds/{band}/NNN-name.sql`
 via `api/scripts/apply-evidence.sh`) — never via migrations.
 
-- One directory per band (`api/seeds/{band}/` in apply order: `001-band.sql` display rows, `002-links.sql`, `00N-evidence.sql` confirmation batches), with ids derived as `{band}-{kind}-{name-slug}` using the full band slug (`orchid-m-jeff-salane`, `orchid-cs-formed`). A UNIQUE conflict then names the actual duplicate.
+- One directory per band (`api/seeds/{band}/` in apply order: `001-band.sql` display rows, `002-links.sql`, `00N-evidence.sql` confirmation batches), plus `api/seeds/members/001-shared.sql` for people who play in more than one band (applied before any band file). Member ids are neutral person slugs (`m-jeff-salane`), never band-prefixed, so one person keeps one row no matter how many bands they join; band edges and claims stay band-scoped (`orchid-bm-jeff-salane`, `orchid-cs-formed`). A UNIQUE conflict then names the actual duplicate.
 - Plain INSERTs only, so a conflict fails loudly. Never INSERT OR IGNORE (or REPLACE) under foreign keys.
 - NULL is an honest gap: blanks allowed wherever no source clears the bar.
 - Every display value needs a source row or it stays `unconfirmed`. Corrections follow §5.
