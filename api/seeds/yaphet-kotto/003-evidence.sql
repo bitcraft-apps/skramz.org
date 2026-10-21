@@ -52,9 +52,9 @@ INSERT INTO claim_sources (id, entity_type, entity_id, field, value, status, tie
   ('yaphet-kotto-cs-role-chris', 'band_member', 'yaphet-kotto-bm-chris-story', 'role', 'bass', 'unconfirmed', 3,
    'http://www.diymusicwiki.com/yaphet-kotto', '2026-10-20',
    'Community lead only; display stays NULL until a T1/T2 source confirms.'),
-  ('yaphet-kotto-cs-name-keith-a', 'member', 'yaphet-kotto-m-keith-miller', 'name', 'Keith Milller', 'disputed', 2,
+  ('yaphet-kotto-cs-name-keith-a', 'member', 'm-keith-miller', 'name', 'Keith Milller', 'disputed', 2,
    'https://www.discogs.com/artist/445131-Yaphet-Kotto', '2026-10-20',
    'Discogs spelling with three l-letters; kept as the losing rival.'),
-  ('yaphet-kotto-cs-name-keith-b', 'member', 'yaphet-kotto-m-keith-miller', 'name', 'Keith Miller', 'disputed', 3,
+  ('yaphet-kotto-cs-name-keith-b', 'member', 'm-keith-miller', 'name', 'Keith Miller', 'disputed', 3,
    'https://en.wikipedia.org/wiki/Yaphet_Kotto_(band)', '2026-10-20',
    'Displayed spelling; community source, so the row stays disputed, not confirmed.');
