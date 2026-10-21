@@ -12,6 +12,60 @@ function str(record: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+// Flat role vocabulary, mirroring MEMBER_ROLES in api/src/lib/http.ts:
+// only roles already in use (extend both when a new one appears in data).
+// Stored lowercase, one membership row per role; list order is the canonical
+// display order (vocals first, never alphabetical).
+const ROLE_ORDER = ["vocals", "guitar", "bass", "drums"];
+
+function roleIndex(role: string): number {
+  const index = ROLE_ORDER.indexOf(role);
+  return index === -1 ? ROLE_ORDER.length : index;
+}
+
+type RoleGroup = { id: string; name: string; roles: string[]; photo_r2_key?: unknown };
+
+// Group flat membership rows (one row per role) into one entry per person,
+// collecting roles in canonical order. NULL/blank roles stay honest gaps.
+// First row wins for passthrough fields like photo_r2_key.
+function groupRoleRows(rows: Record<string, unknown>[]): RoleGroup[] {
+  const byId = new Map<string, RoleGroup>();
+  for (const row of rows) {
+    if (typeof row.id !== "string" || typeof row.name !== "string") continue;
+    let person = byId.get(row.id);
+    if (!person) {
+      person = { id: row.id, name: row.name, roles: [], photo_r2_key: row.photo_r2_key };
+      byId.set(row.id, person);
+    }
+    if (typeof row.role === "string") {
+      const role = row.role.trim().toLowerCase();
+      if (role && !person.roles.includes(role)) person.roles.push(role);
+    }
+  }
+  for (const person of byId.values()) {
+    person.roles.sort((a, b) => roleIndex(a) - roleIndex(b));
+  }
+  return [...byId.values()];
+}
+
+// Uppercase zine chips reusing the disputed/on-page badge language; no chips
+// for a gap (CSS uppercases the stored lowercase value).
+function RoleChips({ roles }: { roles: string[] }) {
+  if (roles.length === 0) return null;
+  return (
+    <span className="flex flex-wrap justify-end gap-1">
+      {roles.map((role) => (
+        <span
+          key={role}
+          className="zine-border inline-block bg-acid px-1 text-xs font-bold uppercase"
+        >
+          {role}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 // Non-blank embed_url, or null when the link is outbound-only.
 function embedUrl(link: Record<string, unknown>): string | null {
   return typeof link.embed_url === "string" && link.embed_url.trim()
@@ -276,7 +330,7 @@ function buildLedgerLookups(
 ): {
   personByBandMemberId: Map<string, string>;
   nameByMemberId: Map<string, string>;
-  roleByPerson: Map<string, unknown>;
+  roleByPerson: Map<string, string[]>;
 } {
   const personByBandMemberId = new Map<string, string>();
   for (const row of sources) {
@@ -290,11 +344,19 @@ function buildLedgerLookups(
     }
   }
   const nameByMemberId = new Map<string, string>();
-  const roleByPerson = new Map<string, unknown>();
+  const roleByPerson = new Map<string, string[]>();
   for (const m of members) {
     if (typeof m.id === "string" && typeof m.name === "string") {
       nameByMemberId.set(m.id, m.name);
-      roleByPerson.set(m.name, m.role ?? null);
+      // One row per role: collect every role row into the person's chip set.
+      // Persons without roles keep an empty set (a display gap, not missing),
+      // so membership rows still resolve to the displayed name.
+      const roles = roleByPerson.get(m.name) ?? [];
+      if (typeof m.role === "string" && m.role.trim()) {
+        const role = m.role.trim().toLowerCase();
+        if (!roles.includes(role)) roles.push(role);
+      }
+      roleByPerson.set(m.name, roles);
     }
   }
   return { personByBandMemberId, nameByMemberId, roleByPerson };
@@ -325,10 +387,12 @@ function ledgerDisplayValue(
 }
 
 // Winner = the displayed value. A null claim value attests the display as-is;
-// a null/blank display means no row wins (the page shows a gap).
+// a null/blank display means no row wins (the page shows a gap). A role
+// display is the person's chip set: a claim wins when its role is chipped.
 function isDisplayedValue(display: unknown, value: string | null): boolean {
   if (value === null) return true;
   if (display === null || display === undefined || display === "") return false;
+  if (Array.isArray(display)) return display.map(String).includes(value);
   return String(display) === String(value);
 }
 
@@ -394,7 +458,11 @@ function ledgerRowState(
   display: unknown,
   value: string | null,
 ): LedgerRowState {
-  const blank = display === null || display === undefined || display === "";
+  const blank =
+    display === null ||
+    display === undefined ||
+    display === "" ||
+    (Array.isArray(display) && display.length === 0);
   if (value === null) return blank ? "lead" : "attests";
   if (blank) return "lead";
   return isDisplayedValue(display, value) ? "winner" : "rival";
@@ -749,17 +817,25 @@ export function BandView() {
           members
         </h2>
         <ul>
-          {data.members.map((m) => (
+          {groupRoleRows(data.members).map((person) => (
             <li
-              key={str(m, "id")}
+              key={person.id}
+              aria-label={
+                person.roles.length > 0
+                  ? `${person.name}, ${person.roles.join(", ")}`
+                  : person.name
+              }
               className="border-t-[3px] border-ink first:border-t-0"
             >
-              <Link
-                to={`/members/${str(m, "id")}`}
-                className="block px-3 py-2 font-bold hover:bg-acid"
-              >
-                {str(m, "name")}
-              </Link>
+              <div className="flex items-center justify-between gap-2 px-3 py-2">
+                <Link
+                  to={`/members/${person.id}`}
+                  className="block flex-1 font-bold hover:bg-acid"
+                >
+                  {person.name}
+                </Link>
+                <RoleChips roles={person.roles} />
+              </div>
             </li>
           ))}
         </ul>
@@ -814,12 +890,20 @@ export function MemberView() {
       <h1>{str(data.data, "name")}</h1>
       <h2>bands</h2>
       <ul>
-        {data.bands.map((b) => {
-          const photo = artUrl(b.photo_r2_key);
+        {groupRoleRows(data.bands).map((band) => {
+          const photo = artUrl(band.photo_r2_key);
           return (
-            <li key={str(b, "id")}>
-              <Link to={`/bands/${str(b, "id")}`}>{str(b, "name")}</Link>
-              {photo && <img src={photo} alt={`${str(b, "name")} photo`} />}
+            <li
+              key={band.id}
+              aria-label={
+                band.roles.length > 0
+                  ? `${band.name}, ${band.roles.join(", ")}`
+                  : band.name
+              }
+            >
+              <Link to={`/bands/${band.id}`}>{band.name}</Link>
+              <RoleChips roles={band.roles} />
+              {photo && <img src={photo} alt={`${band.name} photo`} />}
             </li>
           );
         })}

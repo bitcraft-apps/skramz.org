@@ -85,6 +85,87 @@ describe("encyclopedia band view", () => {
   });
 });
 
+describe("member role chips", () => {
+  const rolesPayload = {
+    ...bandPayload,
+    members: [
+      { id: "m-multi", name: "Multi Player", role: "guitar" },
+      { id: "m-multi", name: "Multi Player", role: "vocals" },
+      { id: "m-gap", name: "Gap Player", role: null },
+    ],
+    sources: [],
+  };
+
+  function claim(id: string, value: string) {
+    return {
+      id,
+      entity_type: "band_member",
+      entity_id: "bm-multi",
+      field: "role",
+      value,
+      status: "confirmed",
+      tier: 2,
+      source_url: "https://press.example.org/review",
+      accessed_at: "2026-10-20",
+      created_at: "2026-10-20",
+      updated_at: null,
+    };
+  }
+
+  it("renders one row per person with chips in canonical order", async () => {
+    stubApi(rolesPayload);
+    renderBand();
+    const section = await screen.findByLabelText("members");
+    expect(within(section).getAllByRole("listitem")).toHaveLength(2);
+    const row = within(section).getByRole("listitem", {
+      name: "Multi Player, vocals, guitar",
+    });
+    // Stored lowercase, CSS-uppercased: chips read vocals-then-guitar.
+    const chips = within(row).getAllByText(/^(vocals|guitar)$/);
+    expect(chips.map((chip) => chip.textContent)).toEqual(["vocals", "guitar"]);
+    for (const chip of chips) expect(chip.className).toContain("uppercase");
+  });
+
+  it("renders a name with no chips for a null role", async () => {
+    stubApi(rolesPayload);
+    renderBand();
+    const section = await screen.findByLabelText("members");
+    const row = within(section).getByRole("listitem", { name: "Gap Player" });
+    expect(within(row).getByRole("link", { name: "Gap Player" })).toBeInTheDocument();
+    expect(row.querySelectorAll(".uppercase")).toHaveLength(0);
+  });
+
+  it("marks a chipped role on page and an unchipped role rival", async () => {
+    stubApi({
+      ...rolesPayload,
+      sources: [
+        {
+          id: "c-mb-multi",
+          entity_type: "band_member",
+          entity_id: "bm-multi",
+          field: "membership",
+          value: "Multi Player",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        claim("c-role-guitar", "guitar"),
+        claim("c-role-drums", "drums"),
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = within(ledger).getAllByRole("listitem");
+    const withNeedles = (...needles: string[]) =>
+      items.find((li) => needles.every((n) => (li.textContent ?? "").includes(n)))!;
+    expect(withNeedles("Multi Player", "guitar").textContent).toContain("on page");
+    expect(withNeedles("Multi Player", "drums").textContent).not.toContain("on page");
+  });
+});
+
 describe("band hero", () => {
   const heroPayload = {
     ...bandPayload,

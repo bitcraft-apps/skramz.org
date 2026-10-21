@@ -1,6 +1,7 @@
 import type { App } from "../lib/http";
 import {
   GRAPH_LIMIT,
+  MEMBER_ROLES,
   escapeLike,
   fetchClaimSources,
   normalizeName,
@@ -191,11 +192,32 @@ export function registerBands(app: App): void {
     if (!member) {
       return c.json({ error: { code: "not_found", message: "Member not found" } }, 404);
     }
+    // One row per role: a person with N roles gets N band_members rows
+    // (grouping is client-side; the GET shape is unchanged).
+    // NULL = honest gap, no role claimed; a present value is trimmed +
+    // lowercased once and must be in the flat vocabulary.
+    const rawRole = parsed.body.role;
+    let role: string | null = null;
+    if (rawRole !== undefined && rawRole !== null) {
+      if (typeof rawRole !== "string") {
+        return c.json(
+          { error: { code: "invalid", message: `role must be one of ${MEMBER_ROLES.join(", ")}` } },
+          422,
+        );
+      }
+      role = rawRole.trim().toLowerCase();
+      if (!(MEMBER_ROLES as readonly string[]).includes(role)) {
+        return c.json(
+          { error: { code: "invalid", message: `role must be one of ${MEMBER_ROLES.join(", ")}` } },
+          422,
+        );
+      }
+    }
     const row = {
       id: crypto.randomUUID(),
       band_id: id,
       member_id: parsed.body.member_id,
-      role: parsed.body.role ?? null,
+      role,
       joined_year: parsed.body.joined_year ?? null,
       left_year: parsed.body.left_year ?? null,
     };

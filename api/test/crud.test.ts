@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createApp, type D1Database, type D1PreparedStatement } from "../src/index";
-import { publicWriteError, tokensEqual } from "../src/lib/http";
+import { MEMBER_ROLES, publicWriteError, tokensEqual } from "../src/lib/http";
 
 // Real-SQL coverage for issue #8: the actual api/migrations/*.sql files are
 // applied to node:sqlite (same engine D1 uses locally) and the Hono app talks
@@ -127,6 +127,94 @@ describe("issue #8: ingestion-token auth", () => {
       members: Record<string, unknown>[];
     };
     expect(band.members.map((m) => m.name)).toContain("Billy Werner");
+  });
+
+  it("out-of-dict role returns 422", async () => {
+    for (const role of ["rhythm guitar", "bass, guitar", "guitar/vocals", "keys", "theremin", "", 42]) {
+      const res = await app.request(
+        "/api/bands/b1/members",
+        {
+          method: "POST",
+          headers: { ...auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ member_id: "m1", role }),
+        },
+        ENV,
+      );
+      expect(res.status).toBe(422);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe("invalid");
+    }
+  });
+
+  it("role is trimmed + lowercased before insert", async () => {
+    const res = await app.request(
+      "/api/bands/b1/members",
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify({ member_id: "m1", role: "  Vocals " }),
+      },
+      ENV,
+    );
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as { data: { role: string } }).data.role).toBe("vocals");
+  });
+
+  it("accepts + round-trips every dict role", async () => {
+    db.prepare("INSERT INTO members (id, name, name_norm) VALUES (?, ?, ?)").run("m9", "Probe Player", "probe player");
+    for (const role of MEMBER_ROLES) {
+      const res = await app.request(
+        "/api/bands/b1/members",
+        {
+          method: "POST",
+          headers: { ...auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ member_id: "m9", role }),
+        },
+        ENV,
+      );
+      expect(res.status).toBe(201);
+    }
+    const band = (await (await app.request("/api/bands/b1", {}, ENV)).json()) as {
+      members: { name: string; role: string }[];
+    };
+    const roles = band.members.filter((m) => m.name === "Probe Player").map((m) => m.role);
+    expect(roles.sort()).toEqual([...MEMBER_ROLES].sort());
+  });
+
+  it("duplicate (band, member, role) is rejected by the unique index", async () => {
+    const body = { member_id: "m1", role: "guitar" };
+    const first = await app.request(
+      "/api/bands/b1/members",
+      { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      ENV,
+    );
+    expect(first.status).toBe(201);
+    const second = await app.request(
+      "/api/bands/b1/members",
+      { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      ENV,
+    );
+    expect(second.status).toBe(409);
+    expect(((await second.json()) as { error: { code: string } }).error.code).toBe("conflict");
+  });
+
+  it("guitar + vocals link as two rows for one person", async () => {
+    for (const role of ["guitar", "vocals"]) {
+      const res = await app.request(
+        "/api/bands/b1/members",
+        {
+          method: "POST",
+          headers: { ...auth, "Content-Type": "application/json" },
+          body: JSON.stringify({ member_id: "m1", role }),
+        },
+        ENV,
+      );
+      expect(res.status).toBe(201);
+    }
+    const band = (await (await app.request("/api/bands/b1", {}, ENV)).json()) as {
+      members: { name: string; role: string }[];
+    };
+    const rows = band.members.filter((m) => m.name === "Billy Werner");
+    expect(rows.map((m) => m.role).sort()).toEqual(["guitar", "vocals"]);
   });
 
   it("linking to a missing band returns 404", async () => {
