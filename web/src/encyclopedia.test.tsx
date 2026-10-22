@@ -360,6 +360,57 @@ describe("band evidence", () => {
     expect(within(ledger).getByText("T2 reputable")).toBeInTheDocument();
   });
 
+  function ledgerRow(id: string, overrides: Record<string, unknown> = {}) {
+    return {
+      id,
+      entity_type: "band",
+      entity_id: "b1",
+      field: "bio",
+      value: "Loud basement trio.",
+      status: "confirmed",
+      tier: 2,
+      source_url: "https://press.example.org/review",
+      accessed_at: "2026-09-01",
+      created_at: "2026-09-01",
+      updated_at: null,
+      ...overrides,
+    };
+  }
+
+  function manyRows(count: number, disputedIndex = -1) {
+    return Array.from({ length: count }, (_, i) =>
+      ledgerRow(
+        `c${i + 1}`,
+        disputedIndex === i
+          ? { value: "Quiet bedroom project.", status: "disputed" }
+          : {},
+      ),
+    );
+  }
+
+  it("collapses a large ledger but names disputed rows in the summary", async () => {
+    stubApi({ ...evidenceHero, sources: manyRows(11, 10) });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    expect(ledger.querySelector("details")).not.toHaveAttribute("open");
+    expect(within(ledger).getByText(/1 disputed: Bio/)).toBeInTheDocument();
+  });
+
+  it("collapses a large ledger with no preview when nothing is disputed", async () => {
+    stubApi({ ...evidenceHero, sources: manyRows(11) });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    expect(ledger.querySelector("details")).not.toHaveAttribute("open");
+    expect(within(ledger).queryByText(/disputed/)).not.toBeInTheDocument();
+  });
+
+  it("auto-expands a ten-row ledger with a dispute (boundary)", async () => {
+    stubApi({ ...evidenceHero, sources: manyRows(10, 9) });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    expect(ledger.querySelector("details")).toHaveAttribute("open");
+  });
+
   it("renders freshness unknown when updated_at is missing", async () => {
     stubApi(evidenceHero);
     renderBand();
