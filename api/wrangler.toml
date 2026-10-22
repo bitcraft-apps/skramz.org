@@ -33,3 +33,7 @@ migrations_dir = "migrations"
 # Binding names become JS identifiers, so the bucket `skramz-media` is bound as `MEDIA`.
 binding = "MEDIA"
 bucket_name = "skramz-media"
+
+[[analytics_engine_datasets]]
+binding = "EVENTS"
+dataset = "skramz_events"

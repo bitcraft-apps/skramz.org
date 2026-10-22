@@ -89,8 +89,32 @@ is bundled and the URL is greppable in `dist/` — the build log's
    filter by hostname to split staging from production.
 
 Accepted limits: cookieless/GDPR-friendly, no consent banner; sampled
-stats (~10%), ~6 months retention; no custom events, funnels, or UTM
-reports.
+stats (~10%), ~6 months retention; pageviews only — interaction funnels
+live in the Analytics Engine dataset below, not here.
+
+## Custom events (Analytics Engine, free tier)
+
+- **What:** the beacon answers "how many pageviews", never "what visitors
+  do". `POST /api/events` (`api/src/routes/events.ts`) records the four
+  interactions the UI actually tracks — `page_view`, `play`, `graph_open`,
+  `search` — into one Analytics Engine dataset. Anything outside that
+  fixed action set is rejected; extra body fields are dropped.
+- **Binding:** `EVENTS` (`[[analytics_engine_datasets]]`,
+  dataset `skramz_events` in `api/wrangler.toml`). The route tolerates a
+  missing binding and a throwing write: analytics never breaks the
+  response (always `202 { ok: true }` on valid input, `400` otherwise).
+- **Frontend:** `web/src/events.ts` (`trackEvent`, `sendBeacon` with
+  `keepalive` fetch fallback, silent on every failure, never awaited in
+  render paths). Wired to route changes (`TrackPageView` in
+  `web/src/App.tsx`), successful searches (`Home`), play buttons
+  (`ListenList` in `web/src/encyclopedia.tsx`), and graph mounts
+  (`web/src/GraphView.tsx`). Payload is action + SPA path only — no
+  band/member/media claims, so the content policy is untouched.
+- **Budget:** zero D1 rows per event (no row-read/CPU impact). Free-tier
+  Analytics Engine quotas apply: 100k writes/day, 10k reads/day.
+- **Reads:** no dashboard yet — query the dataset with the Analytics
+  Engine SQL API when a funnel question comes up. If a persistent
+  dashboard is ever needed, add a cron-to-D1 rollup then, not before.
 
 ## API CORS (verified in code, not dashboard)
 

@@ -1,7 +1,8 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { Link, Route, Routes, useMatch } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, Route, Routes, useLocation, useMatch } from "react-router-dom";
 import { PlayerSlot } from "./PlayerSlot";
+import { trackEvent } from "./events";
 import { BandGraphPage, BandView, MemberView, ReleaseView } from "./encyclopedia";
 import { useBands, useSearch, type SearchResult } from "./hooks";
 import { queryClient } from "./queryClient";
@@ -44,6 +45,15 @@ export function Home() {
     setRaw("");
     setDebounced("");
   };
+  // One search event per debounced query, fired when results land — never
+  // per keystroke, and never before the query succeeds.
+  const lastTrackedQuery = useRef("");
+  useEffect(() => {
+    if (searching && search.data && lastTrackedQuery.current !== query) {
+      lastTrackedQuery.current = query;
+      trackEvent("search", `/?q=${encodeURIComponent(query)}`);
+    }
+  }, [searching, search.data, query]);
 
   // Skip id-less hits: there is nothing to link to, and coercing a
   // missing id to "" would hand same-type rows the same React key.
@@ -207,6 +217,18 @@ function About() {
   );
 }
 
+// One page_view per SPA route change for the custom-event dataset (Analytics
+// Engine), so page views and interactions share one funnel source. Separate
+// from the Web Analytics beacon, which tracks its own pageviews and needs no
+// manual calls (see analytics.ts).
+function TrackPageView() {
+  const location = useLocation();
+  useEffect(() => {
+    trackEvent("page_view", location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 // Root shell: nav + persistent player slot never unmount across routes;
 // only the <Routes> outlet swaps.
 export function App() {
@@ -215,6 +237,7 @@ export function App() {
   const isGraphPage = useMatch("/bands/:id/graph") !== null;
   return (
     <QueryClientProvider client={queryClient}>
+      <TrackPageView />
       <header className="border-b-[3px] border-ink bg-ink text-paper">
         <div className="mx-auto flex max-w-3xl flex-wrap items-baseline gap-x-5 px-4 py-3">
           <span className="text-xl font-bold uppercase tracking-tight">

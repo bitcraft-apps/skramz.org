@@ -1,17 +1,18 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import type { Bindings, D1Database, D1PreparedStatement } from "./lib/db";
+import type { AnalyticsEngineDataset, Bindings, D1Database, D1PreparedStatement } from "./lib/db";
 import { publicInternalError } from "./lib/http";
 import type { App } from "./lib/http";
 import { registerBandLinks } from "./routes/band-links";
 import { registerBands } from "./routes/bands";
+import { registerEvents } from "./routes/events";
 import { registerHealth } from "./routes/health";
 import { registerMediaLinks } from "./routes/media-links";
 import { registerMembers } from "./routes/members";
 import { registerReleases } from "./routes/releases";
 import { registerSearch } from "./routes/search";
 
-export type { Bindings, D1Database, D1PreparedStatement };
+export type { AnalyticsEngineDataset, Bindings, D1Database, D1PreparedStatement };
 export type { App } from "./lib/http";
 // Compat: normalizeName was exported from the pre-split module.
 export { normalizeName } from "./lib/http";
@@ -50,6 +51,7 @@ export function createApp(): App {
 
   app.use("/*", cors({ origin: (origin) => allowOrigin(origin) }));
 
+  registerEvents(app);
   registerHealth(app);
   registerBandLinks(app);
   registerBands(app);
