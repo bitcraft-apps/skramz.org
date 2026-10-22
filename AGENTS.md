@@ -18,7 +18,7 @@ task migrate      # apply D1 migrations locally
 ## Tooling
 
 - Wrangler / Cloudflare CLI may be used for R2, D1, and Workers operations (e.g. `r2 bucket list/info`, `r2 bucket domain list`, `r2 bucket dev-url get`, `d1 migrations apply`). Run it from `api/` via `pnpm exec wrangler`; auth is OAuth (`wrangler whoami`) with `CLOUDFLARE_API_TOKEN` in gitignored `.env`. Read-only probes first; enabling public access or adding domains only on explicit request.
-- Attach visual proof to PRs with `gh pr edit <n> --attach './shot.png#Alt text'` (repeatable, needs gh 2.99+); screenshots stay out of the tree.
+- Attach PR screenshots with `gh pr edit <n> --attach 'shot.png#Alt text'` (needs gh 2.99+); keep screenshots out of the tree.
 
 ## Constraints (binding)
 
