@@ -104,8 +104,11 @@ describe("GraphView", () => {
     renderView();
     const graph = await screen.findByTestId("force-graph");
     await user.selectOptions(screen.getByRole("combobox", { name: "graph depth" }), "1");
-    expect(calls).toHaveLength(2);
-    expect(calls[1]).toContain("/api/bands/a/graph?depth=1");
+    // Only graph API calls count here: mounting also fires one graph_open
+    // analytics event, which shares the stubbed fetch.
+    const graphCalls = calls.filter((url) => url.includes("/api/bands/"));
+    expect(graphCalls).toHaveLength(2);
+    expect(graphCalls[1]).toContain("/api/bands/a/graph?depth=1");
     // Same canvas node survived the refetch — no full-page reload.
     expect(screen.getByTestId("force-graph")).toBe(graph);
   });

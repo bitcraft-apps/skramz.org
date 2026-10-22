@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
+import { trackEvent } from "./events";
 import { useBand, useMember, useRelease, type BandLink, type ClaimSourceRow } from "./hooks";
 import { artUrl } from "./media";
 import { usePlayerStore } from "./stores/playerStore";
@@ -89,6 +90,7 @@ function ListenList({ links }: { links: Record<string, unknown>[] }) {
       if (embed) api.enqueue(embed);
     }
     api.play(start);
+    trackEvent("play");
   };
   return (
     <ul>

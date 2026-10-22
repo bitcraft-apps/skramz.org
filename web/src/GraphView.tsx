@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ForceGraph2D from "react-force-graph-2d";
 import { Link, useNavigate } from "react-router-dom";
+import { trackEvent } from "./events";
 import { useBandGraph } from "./hooks";
 import { useGraphUIStore } from "./stores/graphUIStore";
 
@@ -39,6 +40,12 @@ export function GraphView({ id }: { id: string }) {
   const { data, isLoading, isError } = useBandGraph(id, depth);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 640, height: 480 });
+
+  // One graph_open per mount: opening the map is the interaction, not
+  // depth toggles or node clicks (those stay client-side navigation).
+  useEffect(() => {
+    trackEvent("graph_open");
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
