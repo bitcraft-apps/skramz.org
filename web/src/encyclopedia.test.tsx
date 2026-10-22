@@ -377,13 +377,14 @@ describe("band evidence", () => {
     };
   }
 
-  function manyRows(count: number, disputedIndex: number | null = null) {
+  function manyRows(count: number, disputedIndex = -1) {
     return Array.from({ length: count }, (_, i) =>
-      ledgerRow(`c${i + 1}`, {
-        value:
-          disputedIndex === i ? "Quiet bedroom project." : "Loud basement trio.",
-        status: disputedIndex === i ? "disputed" : "confirmed",
-      }),
+      ledgerRow(
+        `c${i + 1}`,
+        disputedIndex === i
+          ? { value: "Quiet bedroom project.", status: "disputed" }
+          : {},
+      ),
     );
   }
 

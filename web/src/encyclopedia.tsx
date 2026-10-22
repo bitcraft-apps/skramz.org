@@ -619,11 +619,21 @@ function EvidenceLedger({
   // disputed" instead of wearing two contradictory badges.
   const groupKey = (row: ClaimSourceRow): string =>
     `${ledgerSubject(row, lookups) ?? row.entity_id}╎${row.field}`;
+  // Name each disputed field group in the summary so disputes stay
+  // discoverable without expanding everything.
+  const disputedPreview = new Set<string>();
   const groups = new Map<string, ClaimSourceRow[]>();
   for (const row of rows) {
-    const list = groups.get(groupKey(row));
+    const key = groupKey(row);
+    const list = groups.get(key);
     if (list) list.push(row);
-    else groups.set(groupKey(row), [row]);
+    else groups.set(key, [row]);
+    if (large && disputed && row.status === "disputed") {
+      const subject = ledgerSubject(row, lookups);
+      disputedPreview.add(
+        subject ? `${fieldLabel(row.field)} (${subject})` : fieldLabel(row.field),
+      );
+    }
   }
   const disputedGroup = new Set<string>();
   for (const [key, list] of groups) {
@@ -640,18 +650,6 @@ function EvidenceLedger({
     const last = sections[sections.length - 1];
     if (last && last.title === title) last.rows.push(row);
     else sections.push({ title, rows: [row] });
-  }
-  // Name each disputed field group in the summary so disputes stay
-  // discoverable without expanding everything.
-  const disputedPreview = new Set<string>();
-  if (large && disputed) {
-    for (const row of rows) {
-      if (row.status !== "disputed") continue;
-      const subject = ledgerSubject(row, lookups);
-      disputedPreview.add(
-        subject ? `${fieldLabel(row.field)} (${subject})` : fieldLabel(row.field),
-      );
-    }
   }
   const rowList = (list: ClaimSourceRow[]) => (
     <ul className="mt-2">
@@ -676,8 +674,7 @@ function EvidenceLedger({
           sources ({sources.length})
           {disputedPreview.size > 0 && (
             <span className="ml-2 normal-case">
-              — {disputedPreview.size} disputed:{" "}
-              {[...disputedPreview].join(", ")}
+              {`— ${disputedPreview.size} disputed: ${[...disputedPreview].join(", ")}`}
             </span>
           )}
         </summary>
