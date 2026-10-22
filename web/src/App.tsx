@@ -217,9 +217,10 @@ function About() {
   );
 }
 
-// Fires one page_view per SPA route change. The beacon (analytics.ts)
-// already tracks pageviews; this feeds the same path into the custom-event
-// dataset so page views and interactions share one funnel source.
+// One page_view per SPA route change for the custom-event dataset (Analytics
+// Engine), so page views and interactions share one funnel source. Separate
+// from the Web Analytics beacon, which tracks its own pageviews and needs no
+// manual calls (see analytics.ts).
 function TrackPageView() {
   const location = useLocation();
   useEffect(() => {

@@ -5,14 +5,14 @@ import { API_URL } from "./api";
 // which the cookieless Web Analytics beacon (analytics.ts) cannot report.
 // Fire-and-forget: never awaited in render paths, silent on every failure
 // so tracking can never break playback or navigation.
+// Keep in sync with TRACKED_ACTIONS in api/src/routes/events.ts — the server
+// allowlist is authoritative, so drift fails closed as a rejected event.
 export type TrackedAction = "page_view" | "play" | "graph_open" | "search";
 
 export function trackEvent(action: TrackedAction, path?: string): void {
   try {
     const here =
-      typeof window !== "undefined" && typeof window.location?.pathname === "string"
-        ? window.location.pathname + window.location.search
-        : "/";
+      typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
     const payload = JSON.stringify({ action, path: path ?? here });
     const url = `${API_URL}/api/events`;
     if (

@@ -2,9 +2,8 @@ import { readBody, type App } from "../lib/http";
 
 // Fixed action vocabulary for custom user-event tracking. The list grows
 // only when a new interaction ships a call site — never speculatively.
+// Keep in sync with TrackedAction in web/src/events.ts.
 export const TRACKED_ACTIONS = ["page_view", "play", "graph_open", "search"] as const;
-
-export type TrackedAction = (typeof TRACKED_ACTIONS)[number];
 
 const MAX_PATH_LENGTH = 2048;
 
@@ -23,7 +22,7 @@ export function registerEvents(app: App): void {
       );
     }
     const { action, path } = parsed.body;
-    if (typeof action !== "string" || !(TRACKED_ACTIONS as readonly string[]).includes(action)) {
+    if (typeof action !== "string" || !TRACKED_ACTIONS.some((tracked) => tracked === action)) {
       return c.json(
         { error: { code: "invalid_action", message: "Action is not tracked" } },
         400,
