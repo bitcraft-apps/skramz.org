@@ -540,7 +540,7 @@ function LedgerRow({
     <li
       key={String(row.id)}
       aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}`}
-      className={`border-t-[3px] border-ink py-2 text-sm${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
+      className={`border-t border-ink py-2 text-sm${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
     >
       <div>
         {subject !== null && <span className="font-bold">{subject} — </span>}
@@ -563,7 +563,17 @@ function LedgerRow({
         )}
       </div>
       <div className="mt-1 text-xs">
-        <span className="uppercase">{String(row.status)}</span>
+        <span
+          className={
+            row.status === "disputed"
+              ? "zine-border inline-block bg-acid px-1 text-xs font-bold uppercase"
+              : row.status === "confirmed"
+                ? "inline-block border border-ink px-1 text-xs uppercase"
+                : "inline-block border border-dashed border-ink px-1 text-xs uppercase"
+          }
+        >
+          {String(row.status)}
+        </span>
         {" · "}
         <span>{tierLabel(row.tier)}</span>
         {" · "}
@@ -586,6 +596,10 @@ function LedgerRow({
   );
 }
 
+// Ledgers longer than this stay collapsed even with disputes; the summary
+// names the disputed groups so they stay one click away.
+const LARGE_LEDGER_THRESHOLD = 10;
+
 function EvidenceLedger({
   sources,
   band,
@@ -596,6 +610,7 @@ function EvidenceLedger({
   members: Record<string, unknown>[];
 }) {
   const disputed = sources.some((row) => row.status === "disputed");
+  const large = sources.length > LARGE_LEDGER_THRESHOLD;
   const lookups = buildLedgerLookups(sources, members);
   const displayOf = (row: ClaimSourceRow): unknown =>
     ledgerDisplayValue(row, band, lookups);
@@ -626,6 +641,18 @@ function EvidenceLedger({
     if (last && last.title === title) last.rows.push(row);
     else sections.push({ title, rows: [row] });
   }
+  // Name each disputed field group in the summary so disputes stay
+  // discoverable without expanding everything.
+  const disputedPreview = new Set<string>();
+  if (large && disputed) {
+    for (const row of rows) {
+      if (row.status !== "disputed") continue;
+      const subject = ledgerSubject(row, lookups);
+      disputedPreview.add(
+        subject ? `${fieldLabel(row.field)} (${subject})` : fieldLabel(row.field),
+      );
+    }
+  }
   const rowList = (list: ClaimSourceRow[]) => (
     <ul className="mt-2">
       {list.map((row) => (
@@ -644,9 +671,15 @@ function EvidenceLedger({
       aria-label="sources"
       className="zine-border zine-shadow mt-4 bg-paper p-3"
     >
-      <details open={disputed || undefined}>
+      <details open={(!large && disputed) || undefined}>
         <summary className="cursor-pointer text-sm font-bold uppercase">
           sources ({sources.length})
+          {disputedPreview.size > 0 && (
+            <span className="ml-2 normal-case">
+              — {disputedPreview.size} disputed:{" "}
+              {[...disputedPreview].join(", ")}
+            </span>
+          )}
         </summary>
         {sources.length === 0 ? (
           <p className="mt-2 text-sm">
