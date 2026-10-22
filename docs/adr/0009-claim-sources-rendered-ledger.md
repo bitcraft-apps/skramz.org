@@ -21,18 +21,20 @@ shipped behavior, keeping the part of 0005 that is still true.
   state reads "No sources recorded — all fields unconfirmed.". The
   section auto-opens on `disputed`.
 - Rows are grouped under subheads by entity kind (Band / Membership /
-  Roles / Names / Other) with per-section counts, sorted band-first
-  then alphabetical by person, never in raw `entity_type, entity_id`
-  order. Every non-band row names its subject (membership/role rows
-  resolve the person through the membership rows' values, since the API
-  strips `band_member_id` from the public member shape — client-side
-  lookup only, no API change). Membership collapses behind a native
-  disclosure by default; the outer section keeps its auto-open-on-
-  disputed behavior.
+  Roles / Names / Releases / Listen / Other) with per-section counts,
+  sorted band-first then alphabetical by subject, never in raw
+  `entity_type, entity_id` order. Every non-band row names its subject
+  (membership/role rows resolve the person through the membership rows'
+  values, since the API strips `band_member_id` from the public member
+  shape; release rows use the release title, media-link rows the
+  provider — client-side lookups only, no API change). Membership
+  collapses behind a native disclosure by default; the outer section
+  keeps its auto-open-on-disputed behavior.
 - Raw field tokens never reach the UI: one lookup map renders human
-  labels (Formed, Disbanded, Member, Role, Name, Bio, Location) with a
-  raw-token fallback. Subject === value names the person once; name
-  rivals read `subject — claimed "value"` so typo rows are unambiguous.
+  labels (Formed, Disbanded, Member, Role, Name, Bio, Location, Title,
+  Stream, Link, Embed) with a raw-token fallback. Subject === value
+  names the subject once; name/title rivals read `subject — claimed
+  "value"` so typo rows are unambiguous.
 - Three row states replace the binary dim. `on page` (winner: value
   matches display, badge right after the value, full weight). `rival`
   (display non-blank and value differs: indented, dimmed — the only

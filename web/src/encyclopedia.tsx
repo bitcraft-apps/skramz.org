@@ -310,16 +310,19 @@ function freshnessText(updatedAt: unknown): string {
   return `updated ${Math.floor(hours / 24)}d ago`;
 }
 
-type LedgerSection = "Band" | "Membership" | "Roles" | "Names" | "Other";
+type LedgerSection = "Band" | "Membership" | "Roles" | "Names" | "Releases" | "Listen" | "Other";
 
 // Ledger section for one claim row. Band-member membership rows name the
-// person; other band-member rows (roles) resolve through them.
+// person; other band-member rows (roles) resolve through them. Release and
+// media-link rows mirror the page's releases/listen sections.
 function ledgerSection(row: ClaimSourceRow): LedgerSection {
   if (row.entity_type === "band") return "Band";
   if (row.entity_type === "band_member") {
     return row.field === "membership" ? "Membership" : "Roles";
   }
   if (row.entity_type === "member") return "Names";
+  if (row.entity_type === "release") return "Releases";
+  if (row.entity_type === "media_link") return "Listen";
   return "Other";
 }
 
@@ -329,10 +332,16 @@ function ledgerSection(row: ClaimSourceRow): LedgerSection {
 function buildLedgerLookups(
   sources: ClaimSourceRow[],
   members: Record<string, unknown>[],
+  releases: Record<string, unknown>[] = [],
+  mediaLinks: Record<string, unknown>[] = [],
 ): {
   personByBandMemberId: Map<string, string>;
   nameByMemberId: Map<string, string>;
   roleByPerson: Map<string, string[]>;
+  titleByReleaseId: Map<string, string>;
+  providerByMediaLinkId: Map<string, string>;
+  releaseById: Map<string, Record<string, unknown>>;
+  mediaLinkById: Map<string, Record<string, unknown>>;
 } {
   const personByBandMemberId = new Map<string, string>();
   for (const row of sources) {
@@ -361,7 +370,21 @@ function buildLedgerLookups(
       roleByPerson.set(m.name, roles);
     }
   }
-  return { personByBandMemberId, nameByMemberId, roleByPerson };
+  const titleByReleaseId = new Map<string, string>();
+  const releaseById = new Map<string, Record<string, unknown>>();
+  for (const r of releases) {
+    if (typeof r.id !== "string") continue;
+    releaseById.set(r.id, r);
+    if (typeof r.title === "string") titleByReleaseId.set(r.id, r.title);
+  }
+  const providerByMediaLinkId = new Map<string, string>();
+  const mediaLinkById = new Map<string, Record<string, unknown>>();
+  for (const l of mediaLinks) {
+    if (typeof l.id !== "string") continue;
+    mediaLinkById.set(l.id, l);
+    if (typeof l.provider === "string") providerByMediaLinkId.set(l.id, l.provider);
+  }
+  return { personByBandMemberId, nameByMemberId, roleByPerson, titleByReleaseId, providerByMediaLinkId, releaseById, mediaLinkById };
 }
 
 type LedgerLookups = ReturnType<typeof buildLedgerLookups>;
@@ -384,6 +407,12 @@ function ledgerDisplayValue(
   }
   if (row.entity_type === "member") {
     return lookups.nameByMemberId.get(row.entity_id) ?? null;
+  }
+  if (row.entity_type === "release") {
+    return lookups.releaseById.get(row.entity_id)?.[row.field] ?? null;
+  }
+  if (row.entity_type === "media_link") {
+    return lookups.mediaLinkById.get(row.entity_id)?.[row.field] ?? null;
   }
   return null;
 }
@@ -408,6 +437,12 @@ function ledgerSubject(
   if (row.entity_type === "member") {
     return lookups.nameByMemberId.get(row.entity_id) ?? row.value;
   }
+  if (row.entity_type === "release") {
+    return lookups.titleByReleaseId.get(row.entity_id) ?? row.value;
+  }
+  if (row.entity_type === "media_link") {
+    return lookups.providerByMediaLinkId.get(row.entity_id) ?? row.value;
+  }
   return null;
 }
 
@@ -416,6 +451,8 @@ const SECTION_ORDER: LedgerSection[] = [
   "Membership",
   "Roles",
   "Names",
+  "Releases",
+  "Listen",
   "Other",
 ];
 
@@ -428,6 +465,10 @@ const FIELD_LABELS: Record<string, string> = {
   disbanded_year: "Disbanded",
   membership: "Member",
   role: "Role",
+  title: "Title",
+  provider: "Stream",
+  url: "Link",
+  embed_url: "Embed",
 };
 
 function fieldLabel(field: string): string {
@@ -520,7 +561,9 @@ function LedgerRow({
   const claimedName =
     !deduped &&
     subject !== null &&
-    row.entity_type === "member" &&
+    (row.entity_type === "member" ||
+      row.entity_type === "release" ||
+      row.entity_type === "media_link") &&
     row.value !== null &&
     subject !== row.value;
   const valueText =
@@ -607,14 +650,18 @@ function EvidenceLedger({
   sources,
   band,
   members,
+  releases = [],
+  mediaLinks = [],
 }: {
   sources: ClaimSourceRow[];
   band: Record<string, unknown>;
   members: Record<string, unknown>[];
+  releases?: Record<string, unknown>[];
+  mediaLinks?: Record<string, unknown>[];
 }) {
   const disputed = sources.some((row) => row.status === "disputed");
   const large = sources.length > LARGE_LEDGER_THRESHOLD;
-  const lookups = buildLedgerLookups(sources, members);
+  const lookups = buildLedgerLookups(sources, members, releases, mediaLinks);
   const displayOf = (row: ClaimSourceRow): unknown =>
     ledgerDisplayValue(row, band, lookups);
   const rows = sortLedgerRows(sources, lookups, displayOf);
@@ -911,7 +958,7 @@ export function BandView() {
           <ListenList links={data.media_links} />
         </div>
       </section>
-      <EvidenceLedger sources={sources} band={band} members={data.members} />
+      <EvidenceLedger sources={sources} band={band} members={data.members} releases={data.releases} mediaLinks={data.media_links} />
     </main>
   );
 }

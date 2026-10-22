@@ -944,3 +944,137 @@ describe("sources ledger grouping", () => {
     );
   });
 });
+
+describe("sources ledger releases and listen", () => {
+  const releasePayload = {
+    ...bandPayload,
+    releases: [{ id: "r1", title: "Probe Release", cover_r2_key: null }],
+    media_links: [
+      {
+        id: "l1",
+        provider: "bandcamp",
+        url: "https://bandcamp.example/x",
+        embed_url: null,
+      },
+    ],
+    sources: [
+      {
+        id: "c-rel-title",
+        entity_type: "release",
+        entity_id: "r1",
+        field: "title",
+        value: "Probe Release",
+        status: "confirmed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-rel-rival",
+        entity_type: "release",
+        entity_id: "r1",
+        field: "title",
+        value: "Wrong Title",
+        status: "disputed",
+        tier: 3,
+        source_url: "https://forum.example.net/thread",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+      {
+        id: "c-media",
+        entity_type: "media_link",
+        entity_id: "l1",
+        field: "provider",
+        value: "bandcamp",
+        status: "confirmed",
+        tier: 2,
+        source_url: "https://press.example.org/review",
+        accessed_at: "2026-10-20",
+        created_at: "2026-10-20",
+        updated_at: null,
+      },
+    ],
+  };
+
+  it("groups release and media-link rows under their own subheads", async () => {
+    stubApi(releasePayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const heads = within(ledger)
+      .getAllByRole("heading")
+      .map((h) => h.textContent);
+    expect(heads).toEqual(["Releases (2)", "Listen (1)"]);
+    expect(ledger.textContent).not.toContain("Other");
+  });
+
+  it("marks a matching release title on page and dims its rival", async () => {
+    stubApi(releasePayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = within(ledger).getAllByRole("listitem");
+    const winner = items.find(
+      (li) =>
+        (li.textContent ?? "").includes("Probe Release") &&
+        !(li.textContent ?? "").includes("Wrong Title"),
+    )!;
+    expect(winner.textContent).toContain("Title");
+    expect(winner.textContent).toContain("on page");
+    expect(winner.className).not.toContain("opacity-60");
+    const rival = items.find((li) =>
+      (li.textContent ?? "").includes("Wrong Title"),
+    )!;
+    expect(rival.textContent).toContain("Probe Release");
+    expect(rival.textContent).toContain("claimed “Wrong Title”");
+    expect(rival.textContent).toContain("rival");
+    expect(rival.textContent).not.toContain("on page");
+    expect(rival.className).toContain("opacity-60");
+  });
+
+  it("marks a matching stream provider on page under its provider subject", async () => {
+    stubApi(releasePayload);
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = within(ledger).getAllByRole("listitem");
+    const row = items.find((li) =>
+      (li.textContent ?? "").includes("Stream"),
+    )!;
+    expect(row.textContent).toContain("bandcamp");
+    expect(row.textContent).toContain("on page");
+    expect(row.className).not.toContain("opacity-60");
+  });
+
+  it("treats a claim for an unknown release as a lead with the claimed subject", async () => {
+    stubApi({
+      ...bandPayload,
+      releases: [],
+      media_links: [],
+      sources: [
+        {
+          id: "c-rel-ghost",
+          entity_type: "release",
+          entity_id: "r-ghost",
+          field: "title",
+          value: "Ghost Release",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = within(ledger).getAllByRole("listitem");
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("Ghost Release");
+    expect(items[0].textContent).toContain("lead");
+    expect(items[0].textContent).not.toContain("on page");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+});
