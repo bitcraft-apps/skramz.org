@@ -50,9 +50,12 @@ shipped behavior, keeping the part of 0005 that is still true.
   blank display there is nothing to attest, so the row reads as an
   unbadged lead ("no text on page") — reconciling the NULL-attestation
   follow-up (#115) by refusing to crown a blank.
-- `claim_sources.note` stays internal and is never rendered, per
-  content-policy §7. The ledger SELECT omits the column and ledger
-  rows never read it.
+- `claim_sources.note` renders verbatim under its ledger row, per
+  content-policy §7: every row carrying a non-blank note shows it
+  (disputed, unconfirmed, and confirmed alike, so NULL attestations
+  read as summaries). Notes explain only — display values, winner
+  logic, and sorting never read them. The ledger SELECT includes the
+  column; the read stays a single `LIMIT`-bounded indexed lookup.
 
 ## Consequences
 
@@ -60,5 +63,6 @@ shipped behavior, keeping the part of 0005 that is still true.
   "internal, never rendered" sentence for the sidecar as a whole. The
   winner-vs-rival contract and bounded-lookup budget in 0005 are
   unchanged.
-- No code, migration, or seed change; reads stay inside the free-tier
-  budget (single `LIMIT`-bounded indexed lookup per page).
+- No migration or seed change (the column already exists); reads stay
+  inside the free-tier budget (single `LIMIT`-bounded indexed lookup
+  per page, one added column).

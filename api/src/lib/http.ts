@@ -117,7 +117,8 @@ export async function readBody(c: AppContext): Promise<{ ok: true; body: Record<
 
 // One bounded sidecar read per detail response: winners and disputed
 // rivals alike, unfiltered (absence of a row is the unconfirmed signal).
-// The note column stays internal and is never selected.
+// The note column ships verbatim so ledger rows can explain themselves;
+// notes never alter display values or winner logic.
 export type ClaimSourceRef = { entity_type: string; entity_id: string };
 
 export type ClaimSourceRow = {
@@ -132,6 +133,7 @@ export type ClaimSourceRow = {
   accessed_at: string;
   created_at: string;
   updated_at: string;
+  note: string | null;
 };
 
 const CLAIM_ENTITY_TYPES = new Set(["band", "member", "band_member", "release", "media_link"]);
@@ -156,7 +158,7 @@ export async function fetchClaimSources(
   }
   const rows = await db
     .prepare(
-      `SELECT id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, created_at, updated_at FROM claim_sources WHERE ${clauses.join(" OR ")} ORDER BY entity_type, entity_id, field LIMIT 200`,
+      `SELECT id, entity_type, entity_id, field, value, status, tier, source_url, accessed_at, created_at, updated_at, note FROM claim_sources WHERE ${clauses.join(" OR ")} ORDER BY entity_type, entity_id, field LIMIT 200`,
     )
     .bind(...vals)
     .all<ClaimSourceRow>();

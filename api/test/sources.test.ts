@@ -116,11 +116,11 @@ afterEach(() => {
   db.close();
 });
 
-type SourceRow = { id: string; entity_type: string; entity_id: string; status: string };
+type SourceRow = { id: string; entity_type: string; entity_id: string; status: string; note: string | null };
 
-function expectNoNotes(sources: SourceRow[]) {
+function expectNotes(sources: SourceRow[]) {
   for (const row of sources) {
-    expect(row).not.toHaveProperty("note");
+    expect(row).toHaveProperty("note", "internal note");
   }
 }
 
@@ -142,7 +142,7 @@ describe("readers serve sources", () => {
     expect(ids).toEqual(["cs1", "cs2", "cs3", "cs4", "cs5", "cs6", "cs7"]);
     const rival = json.sources.find((s) => s.id === "cs2");
     expect(rival?.status).toBe("disputed");
-    expectNoNotes(json.sources);
+    expectNotes(json.sources);
     expect(json.members[0]).not.toHaveProperty("band_member_id");
   });
 
@@ -169,7 +169,7 @@ describe("readers serve sources", () => {
     expect(Object.keys(json).sort()).toEqual(["bands", "data", "sources"]);
     expect(json.sources.map((s) => s.id).sort()).toEqual(["cs3", "cs4", "cs5"]);
     expect(json.bands[0]).not.toHaveProperty("band_member_id");
-    expectNoNotes(json.sources);
+    expectNotes(json.sources);
   });
 
   it("release detail returns release + media rows, rivals included", async () => {
@@ -182,7 +182,7 @@ describe("readers serve sources", () => {
     };
     expect(Object.keys(json).sort()).toEqual(["data", "media_links", "sources"]);
     expect(json.sources.map((s) => s.id).sort()).toEqual(["cs6", "cs8"]);
-    expectNoNotes(json.sources);
+    expectNotes(json.sources);
   });
 
   it("media-link detail returns its own rows, rivals included", async () => {
@@ -192,7 +192,7 @@ describe("readers serve sources", () => {
     expect(Object.keys(json).sort()).toEqual(["data", "sources"]);
     expect(json.data.id).toBe("ml2");
     expect(json.sources.map((s) => s.id)).toEqual(["cs8"]);
-    expectNoNotes(json.sources);
+    expectNotes(json.sources);
   });
 
   it("missing media link returns 404", async () => {
