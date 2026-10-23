@@ -576,11 +576,15 @@ function LedgerRow({
     state === "winner" || state === "attests" ? "on page" : state;
   const host = hostOf(row.source_url);
   // Notes explain only; display values and winner logic never read them.
+  // The note stays visible verbatim but out of the accessible name, so
+  // screen readers announce the row state without the full note text.
   const note = row.note?.trim() || null;
+  const noteId = note ? `ledger-note-${String(row.id)}` : undefined;
   return (
     <li
       key={String(row.id)}
-      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}${note ? `, note: ${note}` : ""}`}
+      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}`}
+      aria-describedby={noteId}
       className={`border-t border-ink py-2 text-sm${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
     >
       <div>
@@ -633,7 +637,11 @@ function LedgerRow({
         {" · "}
         <span>{row.accessed_at ?? "—"}</span>
       </div>
-      {note && <p className="mt-1 text-xs">Note: {note}</p>}
+      {note && (
+        <p id={noteId} className="mt-1 text-xs">
+          Note: {note}
+        </p>
+      )}
     </li>
   );
 }
