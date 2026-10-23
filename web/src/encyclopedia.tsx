@@ -421,12 +421,17 @@ function isDisplayedValue(display: unknown, value: string | null): boolean {
   return String(display) === String(value);
 }
 
+// Band-member rows with no matching membership row (or only an empty
+// membership value) map to no person. They share one labeled bucket instead
+// of rendering subject-less and sorting by raw join id.
+const UNKNOWN_LEDGER_SUBJECT = "Unknown";
+
 function ledgerSubject(
   row: ClaimSourceRow,
   lookups: LedgerLookups,
 ): string | null {
   if (row.entity_type === "band_member") {
-    return lookups.personByBandMemberId.get(row.entity_id) ?? null;
+    return lookups.personByBandMemberId.get(row.entity_id) ?? UNKNOWN_LEDGER_SUBJECT;
   }
   if (row.entity_type === "member") {
     return lookups.nameByMemberId.get(row.entity_id) ?? null;
