@@ -362,3 +362,70 @@ describe("0006_updated_at migration (real DDL applied to local SQLite/D1-like DB
     old.close();
   });
 });
+
+describe("0009 unconditional parent touch (issue #92)", () => {
+  let db: Db;
+  beforeEach(() => {
+    db = migratedDb();
+  });
+  afterEach(() => {
+    db.close();
+  });
+
+  const OLD = "2000-01-01T00:00:00.000Z";
+  const EXPLICIT = "2024-02-02T02:02:02.002Z";
+  function pinBand(id: string) {
+    db.prepare("UPDATE bands SET updated_at = ? WHERE id = ?").run(OLD, id);
+  }
+  function bandStamp(id: string): unknown {
+    return db.prepare("SELECT updated_at AS u FROM bands WHERE id = ?").get(id)?.u;
+  }
+
+  it("an explicit updated_at write on a release still touches the parent band", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("UPDATE releases SET title = ?, updated_at = ? WHERE id = ?").run("Saetia Remixed", EXPLICIT, "r1");
+    expect(db.prepare("SELECT updated_at AS u FROM releases WHERE id = ?").get("r1")?.u).toBe(EXPLICIT);
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("an explicit updated_at write on a member still touches every band", () => {
+    seed(db);
+    db.prepare("INSERT INTO bands (id, name, name_norm) VALUES (?, ?, ?)").run("b2", "Orchid", "orchid");
+    db.prepare("INSERT INTO band_members (id, band_id, member_id) VALUES (?, ?, ?)").run("bm2", "b2", "m1");
+    pinBand("b1");
+    pinBand("b2");
+    db.prepare("UPDATE members SET bio = ?, updated_at = ? WHERE id = ?").run("Screamed vocals", EXPLICIT, "m1");
+    expect(db.prepare("SELECT updated_at AS u FROM members WHERE id = ?").get("m1")?.u).toBe(EXPLICIT);
+    expect(bandStamp("b1")).not.toBe(OLD);
+    expect(bandStamp("b2")).not.toBe(OLD);
+  });
+
+  it("an explicit updated_at insert on band_members still touches the band", () => {
+    seed(db);
+    pinBand("b1");
+    db.prepare("INSERT INTO band_members (id, band_id, member_id, updated_at) VALUES (?, ?, ?, ?)").run("bm2", "b1", "m1", EXPLICIT);
+    expect(db.prepare("SELECT updated_at AS u FROM band_members WHERE id = ?").get("bm2")?.u).toBe(EXPLICIT);
+    expect(bandStamp("b1")).not.toBe(OLD);
+  });
+
+  it("reassigning band_members touches the old and the new band", () => {
+    seed(db);
+    db.prepare("INSERT INTO bands (id, name, name_norm) VALUES (?, ?, ?)").run("b2", "Orchid", "orchid");
+    pinBand("b1");
+    pinBand("b2");
+    db.prepare("UPDATE band_members SET band_id = ? WHERE id = ?").run("b2", "bm1");
+    expect(bandStamp("b1")).not.toBe(OLD);
+    expect(bandStamp("b2")).not.toBe(OLD);
+  });
+
+  it("reassigning a release touches the old and the new band", () => {
+    seed(db);
+    db.prepare("INSERT INTO bands (id, name, name_norm) VALUES (?, ?, ?)").run("b2", "Orchid", "orchid");
+    pinBand("b1");
+    pinBand("b2");
+    db.prepare("UPDATE releases SET band_id = ? WHERE id = ?").run("b2", "r1");
+    expect(bandStamp("b1")).not.toBe(OLD);
+    expect(bandStamp("b2")).not.toBe(OLD);
+  });
+});

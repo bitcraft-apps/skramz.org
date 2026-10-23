@@ -25,7 +25,11 @@ route code:
 - Touch rule: a child write also stamps its parent band — member writes
   touch all bands linked through `band_members`, `band_members` and
   `releases` writes touch their band, and `media_links` writes touch the
-  direct band or, for release links, the release's band.
+  direct band or, for release links, the release's band. The parent touch
+  is unconditional: an explicit `updated_at` write wins for the row's own
+  stamp only and still moves the parent (migration 0009). Reassigning a
+  `band_members` or `releases` row touches the old parent as well as the
+  new one.
 - Backfill honesty: `members` and `releases` backfill `updated_at` from
   their own `created_at`; `band_members` and `media_links` have no
   `created_at`, so old rows keep `updated_at` NULL (unknown) rather than a
