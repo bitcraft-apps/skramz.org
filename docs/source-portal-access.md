@@ -6,7 +6,6 @@ Curator runbook (human + agent) for verifying evidence rows against source porta
 
 - The Discogs personal token lives in gitignored local `.env` / a CI secret only — the same pattern as the existing Cloudflare token. Never in the repo. `.env.example` carries the empty placeholder key, never a value.
 - Before committing, `git status` must show no secrets. If a token ever lands in a file, rotate it at the portal and purge the commit.
-- MusicBrainz needs no key. RateYourMusic has no token of any kind — it is manual-only (below).
 
 ## Portal map
 
@@ -19,7 +18,7 @@ Curator runbook (human + agent) for verifying evidence rows against source porta
 
 ## Discogs
 
-Mint a free personal token at discogs.com → Settings → Developers, store it as `DISCOGS_TOKEN`, and send it on every API read:
+Mint a free personal token (login required) at `https://www.discogs.com/settings/developers`, store it as `DISCOGS_TOKEN`, and send it on every API read:
 
 ```bash
 curl -s -H "Authorization: Discogs token=$DISCOGS_TOKEN" \
@@ -27,7 +26,7 @@ curl -s -H "Authorization: Discogs token=$DISCOGS_TOKEN" \
   "https://api.discogs.com/artists/1107526" | head -c 300
 ```
 
-Without a token the API still answers but throttles sooner; `discogs.com` artist pages return 403 to scripted fetches either way, so the API is the only scripted path. Image URLs in API payloads are transitory — cite the entry URL, never hotlink (content-policy §4 forbids hotlinks).
+Without a token the API still answers at 25 req/min; with a token, 60 (see `X-Discogs-Ratelimit-*` headers). `discogs.com` artist pages return 403 to scripted fetches either way, so the API is the only scripted path. Image URLs in API payloads are transitory — cite the entry URL (content-policy §4).
 
 ## MusicBrainz
 
@@ -38,11 +37,9 @@ curl -s -A "skramz.org-evidence-check/0.1 ( contact@example.com )" \
   "https://musicbrainz.org/ws/2/artist/cd4f7c44-9ff3-4660-9f93-170fef83edfd?fmt=json" | head -c 300
 ```
 
-The Go scrape clients (open scrape-clients issue) reuse this recipe: stdlib HTTP, 1 rps courtesy limit, descriptive `User-Agent`.
-
 ## RateYourMusic
 
-No public API — record evidence manually: screenshot the live artist page into curator notes (canonical URL with challenge params stripped, per `api/seeds/yaphet-kotto/002-links.sql`) and never add scraping workarounds. If no reachable page attests the slug, leave the link out (per `api/seeds/saetia/002-links.sql`).
+No public API — record evidence manually: screenshot the live artist page into curator notes (canonical URL with challenge params stripped, per `api/seeds/yaphet-kotto/002-links.sql`). If no reachable page attests the slug, leave the link out (per `api/seeds/saetia/002-links.sql`).
 
 ## Static label / press pages
 
@@ -55,9 +52,3 @@ To verify one Discogs-cited and one MusicBrainz-cited claim end to end (acceptan
 1. MusicBrainz: fetch the `ws/2/artist` URL above; confirm `life-span.begin` is `1997-02` and `begin-area.name` is `New York`.
 2. Discogs: fetch `https://api.discogs.com/artists/1107526` (token header as above); confirm `name` is `Saetia` and `uri` is the seeded `https://www.discogs.com/artist/1107526-Saetia` entry.
 3. Record both URLs with today's date as `source_url + accessed_at` per content-policy §1.
-
-## Out of scope
-
-- Serving path: no live portal fetching (ADR-0007).
-- Building the Go scrape clients (open scrape-clients issue).
-- Prod data changes of any kind.
