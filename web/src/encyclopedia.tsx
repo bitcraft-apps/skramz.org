@@ -536,11 +536,8 @@ function LedgerRow({
   const stateText =
     state === "winner" || state === "attests" ? "on page" : state;
   const host = hostOf(row.source_url);
-  // Curator notes render verbatim under every row that carries one —
-  // disputed, unconfirmed, and confirmed alike, so a NULL attestation
-  // reads as its note's summary. Notes explain only: display values
-  // and winner logic never read them.
-  const note = row.note?.trim() ? row.note : null;
+  // Notes explain only; display values and winner logic never read them.
+  const note = row.note?.trim() || null;
   return (
     <li
       key={String(row.id)}
