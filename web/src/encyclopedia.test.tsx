@@ -975,6 +975,95 @@ describe("sources ledger grouping", () => {
       "Confirmed across sources: review attests the origin and tag.",
     );
   });
+
+  it("keeps a disputed-but-displayed membership on page with a dispute qualifier", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-chris", name: "Chris Story", role: null }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "disputed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    // Existence-based winner: the person is displayed, so the row keeps
+    // "on page" at full weight; the dispute surfaces as text, not dimming.
+    expect(items[0].textContent).toContain("on page");
+    expect(items[0].textContent).toContain("currently shown but disputed");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+
+  it("reads a disputed membership for a non-displayed person as a lead", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-scott", name: "Scott Batiste", role: "drums" }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "disputed",
+          tier: 3,
+          source_url: "https://forum.example.net/thread",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("lead");
+    expect(items[0].textContent).not.toContain("on page");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+
+  it("leaves a confirmed undisputed membership on page with no qualifier", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-chris", name: "Chris Story", role: null }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("on page");
+    expect(items[0].textContent).not.toContain("currently shown but disputed");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
 });
 
 describe("sources ledger releases and listen", () => {
