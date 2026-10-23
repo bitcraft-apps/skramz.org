@@ -338,8 +338,6 @@ function buildLedgerLookups(
   personByBandMemberId: Map<string, string>;
   nameByMemberId: Map<string, string>;
   roleByPerson: Map<string, string[]>;
-  titleByReleaseId: Map<string, string>;
-  providerByMediaLinkId: Map<string, string>;
   releaseById: Map<string, Record<string, unknown>>;
   mediaLinkById: Map<string, Record<string, unknown>>;
 } {
@@ -370,21 +368,17 @@ function buildLedgerLookups(
       roleByPerson.set(m.name, roles);
     }
   }
-  const titleByReleaseId = new Map<string, string>();
   const releaseById = new Map<string, Record<string, unknown>>();
   for (const r of releases) {
     if (typeof r.id !== "string") continue;
     releaseById.set(r.id, r);
-    if (typeof r.title === "string") titleByReleaseId.set(r.id, r.title);
   }
-  const providerByMediaLinkId = new Map<string, string>();
   const mediaLinkById = new Map<string, Record<string, unknown>>();
   for (const l of mediaLinks) {
     if (typeof l.id !== "string") continue;
     mediaLinkById.set(l.id, l);
-    if (typeof l.provider === "string") providerByMediaLinkId.set(l.id, l.provider);
   }
-  return { personByBandMemberId, nameByMemberId, roleByPerson, titleByReleaseId, providerByMediaLinkId, releaseById, mediaLinkById };
+  return { personByBandMemberId, nameByMemberId, roleByPerson, releaseById, mediaLinkById };
 }
 
 type LedgerLookups = ReturnType<typeof buildLedgerLookups>;
@@ -438,10 +432,12 @@ function ledgerSubject(
     return lookups.nameByMemberId.get(row.entity_id) ?? row.value;
   }
   if (row.entity_type === "release") {
-    return lookups.titleByReleaseId.get(row.entity_id) ?? row.value;
+    const title = lookups.releaseById.get(row.entity_id)?.title;
+    return typeof title === "string" ? title : row.value;
   }
   if (row.entity_type === "media_link") {
-    return lookups.providerByMediaLinkId.get(row.entity_id) ?? row.value;
+    const provider = lookups.mediaLinkById.get(row.entity_id)?.provider;
+    return typeof provider === "string" ? provider : row.value;
   }
   return null;
 }
