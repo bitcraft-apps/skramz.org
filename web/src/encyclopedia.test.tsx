@@ -1037,6 +1037,28 @@ describe("sources ledger grouping", () => {
     );
   });
 
+  it("keeps the curator note out of the row accessible name", async () => {
+    const noteText =
+      "Label copy implies about 1997; losing rival, display stays 1996.";
+    stubApi({
+      ...ledgerPayload,
+      sources: ledgerPayload.sources.map((row) =>
+        row.id === "c-formed-rival" ? { ...row, note: noteText } : row,
+      ),
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const rival = rowWith(items, "~1997");
+    // Visible verbatim, but not part of the accessible name.
+    expect(rival.textContent).toContain(noteText);
+    expect(rival.getAttribute("aria-label")).not.toContain(noteText);
+    const describedBy = rival.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const noteEl = within(rival).getByText(`Note: ${noteText}`);
+    expect(noteEl).toHaveAttribute("id", describedBy);
+  });
+
   it("renders a note excerpt on a NULL-value row instead of a bare gap", async () => {
     stubApi({
       ...bandPayload,
