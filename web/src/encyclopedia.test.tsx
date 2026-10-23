@@ -886,6 +886,115 @@ describe("sources ledger grouping", () => {
     expect(text).not.toContain("band_member");
   });
 
+  it("labels release and media-link fields with human words", async () => {
+    stubApi({
+      ...bandPayload,
+      releases: [
+        {
+          id: "r1",
+          title: "Probe Release",
+          release_type: "lp",
+          release_year: 1996,
+          cover_r2_key: "releases/r1/cover.jpg",
+          band_id: "b1",
+        },
+      ],
+      media_links: [
+        {
+          id: "l1",
+          provider: "youtube",
+          url: "https://youtube.example/y",
+          embed_url: null,
+          release_id: "r1",
+          band_id: null,
+        },
+      ],
+      sources: [
+        {
+          id: "c-type",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "release_type",
+          value: "lp",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-year",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "release_year",
+          value: "1996",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-cover",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "cover_r2_key",
+          value: "releases/r1/cover.jpg",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-band",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "band_id",
+          value: "b1",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-release",
+          entity_type: "media_link",
+          entity_id: "l1",
+          field: "release_id",
+          value: "r1",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(rowWith(items, "Type", "lp").textContent).toContain("on page");
+    expect(rowWith(items, "Year", "1996").textContent).toContain("on page");
+    expect(rowWith(items, "Cover").textContent).toContain("on page");
+    expect(rowWith(items, "Band", "b1").textContent).toContain("on page");
+    expect(rowWith(items, "youtube", "Release").textContent).toContain(
+      "on page",
+    );
+    const text = ledger.textContent ?? "";
+    expect(text).not.toContain("release_type");
+    expect(text).not.toContain("release_year");
+    expect(text).not.toContain("cover_r2_key");
+    expect(text).not.toContain("band_id");
+    expect(text).not.toContain("release_id");
+  });
+
   it("separates a name claim from its subject so a typo row is unambiguous", async () => {
     stubApi(ledgerPayload);
     renderBand();
