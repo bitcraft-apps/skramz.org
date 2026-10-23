@@ -32,7 +32,8 @@ shipped behavior, keeping the part of 0005 that is still true.
   keeps its auto-open-on-disputed behavior.
 - Raw field tokens never reach the UI: one lookup map renders human
   labels (Formed, Disbanded, Member, Role, Name, Bio, Location, Title,
-  Stream, Link, Embed) with a raw-token fallback. Subject === value
+  Type, Year, Cover, Band, Release, Stream, Link, Embed) with a raw-token
+  fallback. Subject === value
   names the subject once; name/title rivals read `subject — claimed
   "value"` so typo rows are unambiguous.
 - Three row states replace the binary dim. `on page` (winner: value
