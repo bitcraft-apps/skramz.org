@@ -579,7 +579,7 @@ function LedgerRow({
   // The note stays visible verbatim but out of the accessible name, so
   // screen readers announce the row state without the full note text.
   const note = row.note?.trim() || null;
-  const noteId = note ? `ledger-note-${String(row.id)}` : undefined;
+  const noteId = note ? `ledger-note-${row.id}` : undefined;
   return (
     <li
       key={String(row.id)}
