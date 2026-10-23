@@ -1,0 +1,205 @@
+name: Seed Remote D1
+
+# Remote seeding rides the same audited path as migrations: additive batches
+# apply automatically on merge, full rebuilds need an explicit gate.
+# Apply order always comes from api/seeds/manifest.txt (fails closed when missing).
+# Verify runs per-statement via --command: --file --json returns a summary row
+# with no per-query results, so piping it to a JSON check proves nothing.
+
+on:
+  push:
+    branches: [main]
+    paths: ['api/seeds/**', '.github/workflows/seed-remote.yml']
+  workflow_dispatch:
+    inputs:
+      WIPE:
+        description: 'Type WIPE to wipe prod D1 and re-apply the full manifest (a hashed backup is exported first)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Shared with the deploy workflow so seeds never race migrations.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  seed-additive:
+    name: Apply changed seed batches
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Inject D1 database_id (CI working copy only, never committed)
+        run: |
+          [ -n "${{ secrets.D1_DATABASE_ID }}" ] || { echo "D1_DATABASE_ID secret is empty"; exit 1; }
+          sed -i 's/database_id = "00000000-0000-0000-0000-000000000000"/database_id = "${{ secrets.D1_DATABASE_ID }}"/' wrangler.toml
+          if grep -q '00000000-0000-0000-0000-000000000000' wrangler.toml; then echo "placeholder database_id still present"; exit 1; fi
+      - name: Apply changed seed files in manifest order
+        run: |
+          [ -f seeds/manifest.txt ] || { echo "seeds/manifest.txt missing — refusing to guess apply order"; exit 1; }
+          git -C "$GITHUB_WORKSPACE" diff --name-only HEAD~1 HEAD -- api/seeds/ > /tmp/changed.txt
+          if [ ! -s /tmp/changed.txt ]; then echo "no seed files changed"; exit 0; fi
+          # Fail closed: every changed data file must be listed in the manifest.
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            rel="${f#api/seeds/}"
+            case "$rel" in _verify.sql|templates/*|manifest.txt) echo "skip non-data change: $rel"; continue;; esac
+            grep -qxF "$rel" seeds/manifest.txt || { echo "changed seed not in manifest.txt: $rel"; exit 1; }
+          done < /tmp/changed.txt
+          APPLIED=0
+          while IFS= read -r rel; do
+            case "$rel" in ''|'#'*) continue;; esac
+            if grep -qxF "api/seeds/$rel" /tmp/changed.txt; then
+              echo "applying $rel"
+              pnpm exec wrangler d1 execute DB --remote --file="seeds/$rel"
+              APPLIED=$((APPLIED + 1))
+            fi
+          done < seeds/manifest.txt
+          echo "applied $APPLIED file(s)"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify (per-statement, fails on any row)
+        run: |
+          [ -f seeds/manifest.txt ] || { echo "seeds/manifest.txt missing"; exit 1; }
+          python3 - <<'EOF'
+          import json, subprocess, sys
+          sql = open('seeds/_verify.sql').read()
+          stmts = [s.strip() for s in sql.split(';') if s.strip()]
+          assert stmts, "no statements in seeds/_verify.sql"
+          for i, stmt in enumerate(stmts, 1):
+              out = subprocess.run(
+                  ['pnpm', 'exec', 'wrangler', 'd1', 'execute', 'DB', '--remote', '--json', '--command', stmt],
+                  capture_output=True, text=True)
+              if out.returncode != 0:
+                  print(out.stdout + out.stderr, file=sys.stderr)
+                  sys.exit(f'verify statement {i}/{len(stmts)} errored')
+              txt = out.stdout
+              start = min(p for p in (txt.find('['), txt.find('{')) if p >= 0)
+              rows = [r for q in json.loads(txt[start:]) for r in (q.get('results') or [])]
+              if rows:
+                  for r in rows:
+                      print(json.dumps(r))
+                  sys.exit(f'verify statement {i}/{len(stmts)} FAILED: {len(rows)} row(s)')
+              print(f'verify statement {i}/{len(stmts)} clean')
+          print('remote verify clean')
+          EOF
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  rebuild:
+    name: Wipe and re-apply full manifest
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Required reviewer on this environment is the explicit human gate.
+    environment: prod-data
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Inject D1 database_id (CI working copy only, never committed)
+        run: |
+          [ -n "${{ secrets.D1_DATABASE_ID }}" ] || { echo "D1_DATABASE_ID secret is empty"; exit 1; }
+          sed -i 's/database_id = "00000000-0000-0000-0000-000000000000"/database_id = "${{ secrets.D1_DATABASE_ID }}"/' wrangler.toml
+          if grep -q '00000000-0000-0000-0000-000000000000' wrangler.toml; then echo "placeholder database_id still present"; exit 1; fi
+      - name: Confirm WIPE input
+        run: |
+          [ "${{ inputs.WIPE }}" = "WIPE" ] || { echo "refusing rebuild without WIPE input"; exit 1; }
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Export hashed backup before wipe
+        run: |
+          OUT="$RUNNER_TEMP/prod-backup-${{ github.run_id }}.sql"
+          pnpm exec wrangler d1 export DB --remote --output="$OUT"
+          sha256sum "$OUT" | tee /tmp/backup.sha
+          echo "### Prod backup \`prod-backup-${{ github.run_id }}.sql\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$(cat /tmp/backup.sha)\`" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prod-backup-${{ github.run_id }}
+          path: ${{ runner.temp }}/prod-backup-${{ github.run_id }}.sql
+          retention-days: 30
+      - name: Wipe seed tables (children first; restore stays manual)
+        run: |
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM claim_sources;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM band_links;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM media_links;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM releases;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM band_members;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM members;"
+          pnpm exec wrangler d1 execute DB --remote --command="DELETE FROM bands;"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Apply full manifest in order
+        run: |
+          [ -f seeds/manifest.txt ] || { echo "seeds/manifest.txt missing — refusing to guess apply order"; exit 1; }
+          while IFS= read -r rel; do
+            case "$rel" in ''|'#'*) continue;; esac
+            echo "applying $rel"
+            pnpm exec wrangler d1 execute DB --remote --file="seeds/$rel"
+          done < seeds/manifest.txt
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify (per-statement, fails on any row)
+        run: |
+          python3 - <<'EOF'
+          import json, subprocess, sys
+          sql = open('seeds/_verify.sql').read()
+          stmts = [s.strip() for s in sql.split(';') if s.strip()]
+          assert stmts, "no statements in seeds/_verify.sql"
+          for i, stmt in enumerate(stmts, 1):
+              out = subprocess.run(
+                  ['pnpm', 'exec', 'wrangler', 'd1', 'execute', 'DB', '--remote', '--json', '--command', stmt],
+                  capture_output=True, text=True)
+              if out.returncode != 0:
+                  print(out.stdout + out.stderr, file=sys.stderr)
+                  sys.exit(f'verify statement {i}/{len(stmts)} errored')
+              txt = out.stdout
+              start = min(p for p in (txt.find('['), txt.find('{')) if p >= 0)
+              rows = [r for q in json.loads(txt[start:]) for r in (q.get('results') or [])]
+              if rows:
+                  for r in rows:
+                      print(json.dumps(r))
+                  sys.exit(f'verify statement {i}/{len(stmts)} FAILED: {len(rows)} row(s)')
+              print(f'verify statement {i}/{len(stmts)} clean')
+          print('remote verify clean')
+          EOF
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
