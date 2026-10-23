@@ -716,6 +716,72 @@ describe("sources ledger grouping", () => {
     ).toContain("Keith Miller");
   });
 
+  it("buckets band_member rows with no membership under an Unknown subject", async () => {
+    stubApi({
+      ...ledgerPayload,
+      sources: [
+        ...ledgerPayload.sources,
+        {
+          id: "c-role-ghost",
+          entity_type: "band_member",
+          entity_id: "bm-ghost",
+          field: "role",
+          value: "guitar",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-mb-empty",
+          entity_type: "band_member",
+          entity_id: "bm-empty",
+          field: "membership",
+          value: "",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-role-empty",
+          entity_type: "band_member",
+          entity_id: "bm-empty",
+          field: "role",
+          value: "bass",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const texts = items.map((li) => li.textContent ?? "");
+    // A role row with no matching membership row and rows on an empty
+    // membership value share the labeled bucket with a subject prefix.
+    const unknown = texts.filter((t) => t.includes("Unknown"));
+    expect(unknown).toHaveLength(3);
+    expect(rowWith(items, "Unknown", "Member").textContent).toContain("Unknown");
+    // The Unknown role rows group together instead of sorting by raw id.
+    const roleUnknown = texts.filter(
+      (t) => t.includes("Unknown") && t.includes("Role"),
+    );
+    expect(roleUnknown).toHaveLength(2);
+    expect(texts.indexOf(roleUnknown[1]) - texts.indexOf(roleUnknown[0])).toBe(1);
+    const text = ledger.textContent ?? "";
+    expect(text).not.toContain("bm-ghost");
+    expect(text).not.toContain("bm-empty");
+  });
+
   it("marks the on-page value and dims only true rivals", async () => {
     stubApi(ledgerPayload);
     renderBand();
