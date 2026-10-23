@@ -16,10 +16,16 @@ shipped behavior, keeping the part of 0005 that is still true.
 ## Decision
 
 - Sidecar rows ARE rendered as the SOURCES ledger section
-  (`aria-label="sources"`): one row per claim showing field, value,
-  status, tier label, source link (hostname), and `accessed_at`; empty
-  state reads "No sources recorded — all fields unconfirmed.". The
-  section auto-opens on `disputed`.
+  (`aria-label="sources"`, `id="sources"`): one row per claim showing
+  field, value, status, tier label, and source link (hostname + short
+  path excerpt, full URL in the `title`); `accessed_at` stays out of the
+  row layout and lives in the link `title` plus the row `aria-label`.
+  Empty state reads "No sources recorded — all fields unconfirmed.".
+  The section auto-opens on `disputed`.
+- Every ledger row carries a stable `ledger-row-<id>` anchor with a
+  `:target` highlight. Hero and member markers link to their rows
+  (winner first), so a badge lands on evidence instead of hinting at it
+  via hover `title` only.
 - Rows are grouped under subheads by entity kind (Band / Membership /
   Roles / Names / Releases / Listen / Other) with per-section counts,
   sorted band-first then alphabetical by subject, never in raw
