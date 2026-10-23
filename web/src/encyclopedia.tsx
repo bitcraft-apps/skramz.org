@@ -415,8 +415,8 @@ function ledgerDisplayValue(
 // a null/blank display means no row wins (the page shows a gap). A role
 // display is the person's chip set: a claim wins when its role is chipped.
 function isDisplayedValue(display: unknown, value: string | null): boolean {
-  if (value === null) return true;
   if (display === null || display === undefined || display === "") return false;
+  if (value === null) return true;
   if (Array.isArray(display)) return display.map(String).includes(value);
   return String(display) === String(value);
 }

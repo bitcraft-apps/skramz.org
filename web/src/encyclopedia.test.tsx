@@ -887,6 +887,38 @@ describe("sources ledger grouping", () => {
     expect(items[0].className).not.toContain("opacity-60");
   });
 
+  it("leaves a NULL attestation over an empty-string display unbadged", async () => {
+    stubApi({
+      ...bandPayload,
+      data: { ...bandPayload.data, bio: "", updated_at: null },
+      sources: [
+        {
+          id: "c-bio",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: null,
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: null,
+          created_at: "2026-09-01",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("lead");
+    expect(items[0].textContent).toContain("no text on page");
+    expect(
+      within(items[0]).queryByText("on page", { exact: true }),
+    ).not.toBeInTheDocument();
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+
   it("renders the curator note under a disputed row", async () => {
     stubApi({
       ...ledgerPayload,
