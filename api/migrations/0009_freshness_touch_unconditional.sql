@@ -1,4 +1,4 @@
--- Freshness touch-up (issue #92): parent band touch becomes unconditional.
+-- Freshness touch-up: parent band touch becomes unconditional.
 -- Migration 0006 gated the whole trigger body behind WHEN NEW.updated_at IS
 -- OLD.updated_at (updates) / IS NULL (inserts), so an explicit updated_at
 -- write self-stamped the row but silently skipped the parent band touch,

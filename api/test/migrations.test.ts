@@ -363,7 +363,7 @@ describe("0006_updated_at migration (real DDL applied to local SQLite/D1-like DB
   });
 });
 
-describe("0009 unconditional parent touch (issue #92)", () => {
+describe("0009 unconditional parent touch", () => {
   let db: Db;
   beforeEach(() => {
     db = migratedDb();
