@@ -822,6 +822,36 @@ describe("sources ledger grouping", () => {
     );
   });
 
+  it("leaves a member row with an unknown id subject-less instead of echoing the rival spelling", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m1", name: "Probe Member" }],
+      sources: [
+        {
+          id: "c-name-ghost",
+          entity_type: "member",
+          entity_id: "m-ghost",
+          field: "name",
+          value: "Keith Milller",
+          status: "disputed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("Name");
+    expect(items[0].textContent).toContain("Keith Milller");
+    expect(items[0].textContent).not.toContain("—");
+    expect(items[0].textContent).toContain("lead");
+  });
+
   it("renders a NULL attestation as attested text, never a badged em-dash", async () => {
     stubApi({
       ...bandPayload,

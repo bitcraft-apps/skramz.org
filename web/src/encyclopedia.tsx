@@ -429,7 +429,7 @@ function ledgerSubject(
     return lookups.personByBandMemberId.get(row.entity_id) ?? null;
   }
   if (row.entity_type === "member") {
-    return lookups.nameByMemberId.get(row.entity_id) ?? row.value;
+    return lookups.nameByMemberId.get(row.entity_id) ?? null;
   }
   if (row.entity_type === "release") {
     const title = lookups.releaseById.get(row.entity_id)?.title;
