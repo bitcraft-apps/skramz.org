@@ -576,6 +576,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-name-b",
@@ -589,6 +590,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-mb-scott",
@@ -602,6 +604,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-formed-rival",
@@ -615,6 +618,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-mb-chris",
@@ -628,6 +632,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-role-scott",
@@ -641,6 +646,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-formed",
@@ -654,6 +660,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-name-a",
@@ -667,6 +674,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
     ],
   };
