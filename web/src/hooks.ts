@@ -23,6 +23,7 @@ export type ClaimSourceRow = {
   accessed_at: string | null;
   created_at: string;
   updated_at: string | null;
+  note: string | null;
 };
 
 export type BandDetail = {

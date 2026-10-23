@@ -536,10 +536,12 @@ function LedgerRow({
   const stateText =
     state === "winner" || state === "attests" ? "on page" : state;
   const host = hostOf(row.source_url);
+  // Notes explain only; display values and winner logic never read them.
+  const note = row.note?.trim() || null;
   return (
     <li
       key={String(row.id)}
-      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}`}
+      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}${note ? `, note: ${note}` : ""}`}
       className={`border-t border-ink py-2 text-sm${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
     >
       <div>
@@ -592,6 +594,7 @@ function LedgerRow({
         {" · "}
         <span>{row.accessed_at ?? "—"}</span>
       </div>
+      {note && <p className="mt-1 text-xs">Note: {note}</p>}
     </li>
   );
 }

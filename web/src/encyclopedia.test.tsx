@@ -886,4 +886,61 @@ describe("sources ledger grouping", () => {
     ).not.toBeInTheDocument();
     expect(items[0].className).not.toContain("opacity-60");
   });
+
+  it("renders the curator note under a disputed row", async () => {
+    stubApi({
+      ...ledgerPayload,
+      sources: ledgerPayload.sources.map((row) =>
+        row.id === "c-formed-rival"
+          ? {
+              ...row,
+              note: "Label copy implies about 1997; losing rival, display stays 1996.",
+            }
+          : row,
+      ),
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const rival = rowWith(items, "~1997");
+    expect(rival.textContent).toContain("rival");
+    expect(rival.textContent).toContain(
+      "Label copy implies about 1997; losing rival, display stays 1996.",
+    );
+  });
+
+  it("renders a note excerpt on a NULL-value row instead of a bare gap", async () => {
+    stubApi({
+      ...bandPayload,
+      data: {
+        ...bandPayload.data,
+        bio: "Loud basement trio.",
+        updated_at: null,
+      },
+      sources: [
+        {
+          id: "c-bio",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "bio",
+          value: null,
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-09-01",
+          created_at: "2026-09-01",
+          updated_at: null,
+          note: "Confirmed across sources: review attests the origin and tag.",
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("attests current text");
+    expect(items[0].textContent).toContain(
+      "Confirmed across sources: review attests the origin and tag.",
+    );
+  });
 });
