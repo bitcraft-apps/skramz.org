@@ -27,7 +27,9 @@ shipped behavior, keeping the part of 0005 that is still true.
   (membership/role rows resolve the person through the membership rows'
   values, since the API strips `band_member_id` from the public member
   shape; release rows use the release title, media-link rows the
-  provider — client-side lookups only, no API change). Membership
+  provider — client-side lookups only, no API change). A member row
+  whose entity_id has no display-table entry renders subject-less (no
+  bold prefix) rather than echoing the claim value. Membership
   collapses behind a native disclosure by default; the outer section
   keeps its auto-open-on-disputed behavior.
 - Raw field tokens never reach the UI: one lookup map renders human
