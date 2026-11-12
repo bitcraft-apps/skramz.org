@@ -1,0 +1,11 @@
+# Apply-order source of truth for seed data (ADR 0008 follow-up).
+# Consumed by .github/workflows/seed-remote.yml — never hardcode order in CI.
+# templates/ and _verify.sql are intentionally excluded (not data).
+members/001-shared.sql
+saetia/001-band.sql
+saetia/002-links.sql
+pg-99/001-band.sql
+pg-99/002-links.sql
+yaphet-kotto/001-band.sql
+yaphet-kotto/002-links.sql
+yaphet-kotto/003-evidence.sql
