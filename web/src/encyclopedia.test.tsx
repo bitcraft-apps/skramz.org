@@ -580,6 +580,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-name-b",
@@ -593,6 +594,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-mb-scott",
@@ -606,6 +608,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-formed-rival",
@@ -619,6 +622,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-mb-chris",
@@ -632,6 +636,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-role-scott",
@@ -645,6 +650,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-formed",
@@ -658,6 +664,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
       {
         id: "c-name-a",
@@ -671,6 +678,7 @@ describe("sources ledger grouping", () => {
         accessed_at: "2026-10-20",
         created_at: "2026-10-20",
         updated_at: null,
+        note: null,
       },
     ],
   };
@@ -718,6 +726,72 @@ describe("sources ledger grouping", () => {
     expect(
       rowWith(items, "Keith Milller").textContent,
     ).toContain("Keith Miller");
+  });
+
+  it("buckets band_member rows with no membership under an Unknown subject", async () => {
+    stubApi({
+      ...ledgerPayload,
+      sources: [
+        ...ledgerPayload.sources,
+        {
+          id: "c-role-ghost",
+          entity_type: "band_member",
+          entity_id: "bm-ghost",
+          field: "role",
+          value: "guitar",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-mb-empty",
+          entity_type: "band_member",
+          entity_id: "bm-empty",
+          field: "membership",
+          value: "",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-role-empty",
+          entity_type: "band_member",
+          entity_id: "bm-empty",
+          field: "role",
+          value: "bass",
+          status: "unconfirmed",
+          tier: 3,
+          source_url: null,
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const texts = items.map((li) => li.textContent ?? "");
+    // A role row with no matching membership row and rows on an empty
+    // membership value share the labeled bucket with a subject prefix.
+    const unknown = texts.filter((t) => t.includes("Unknown"));
+    expect(unknown).toHaveLength(3);
+    expect(rowWith(items, "Unknown", "Member").textContent).toContain("Unknown");
+    // The Unknown role rows group together instead of sorting by raw id.
+    const roleUnknown = texts.filter(
+      (t) => t.includes("Unknown") && t.includes("Role"),
+    );
+    expect(roleUnknown).toHaveLength(2);
+    expect(texts.indexOf(roleUnknown[1]) - texts.indexOf(roleUnknown[0])).toBe(1);
+    const text = ledger.textContent ?? "";
+    expect(text).not.toContain("bm-ghost");
+    expect(text).not.toContain("bm-empty");
   });
 
   it("marks the on-page value and dims only true rivals", async () => {
@@ -816,6 +890,115 @@ describe("sources ledger grouping", () => {
     expect(text).not.toContain("band_member");
   });
 
+  it("labels release and media-link fields with human words", async () => {
+    stubApi({
+      ...bandPayload,
+      releases: [
+        {
+          id: "r1",
+          title: "Probe Release",
+          release_type: "lp",
+          release_year: 1996,
+          cover_r2_key: "releases/r1/cover.jpg",
+          band_id: "b1",
+        },
+      ],
+      media_links: [
+        {
+          id: "l1",
+          provider: "youtube",
+          url: "https://youtube.example/y",
+          embed_url: null,
+          release_id: "r1",
+          band_id: null,
+        },
+      ],
+      sources: [
+        {
+          id: "c-type",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "release_type",
+          value: "lp",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-year",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "release_year",
+          value: "1996",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-cover",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "cover_r2_key",
+          value: "releases/r1/cover.jpg",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-band",
+          entity_type: "release",
+          entity_id: "r1",
+          field: "band_id",
+          value: "b1",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+        {
+          id: "c-release",
+          entity_type: "media_link",
+          entity_id: "l1",
+          field: "release_id",
+          value: "r1",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(rowWith(items, "Type", "lp").textContent).toContain("on page");
+    expect(rowWith(items, "Year", "1996").textContent).toContain("on page");
+    expect(rowWith(items, "Cover").textContent).toContain("on page");
+    expect(rowWith(items, "Band", "b1").textContent).toContain("on page");
+    expect(rowWith(items, "youtube", "Release").textContent).toContain(
+      "on page",
+    );
+    const text = ledger.textContent ?? "";
+    expect(text).not.toContain("release_type");
+    expect(text).not.toContain("release_year");
+    expect(text).not.toContain("cover_r2_key");
+    expect(text).not.toContain("band_id");
+    expect(text).not.toContain("release_id");
+  });
+
   it("separates a name claim from its subject so a typo row is unambiguous", async () => {
     stubApi(ledgerPayload);
     renderBand();
@@ -824,6 +1007,36 @@ describe("sources ledger grouping", () => {
     expect(rowWith(items, "Milller").textContent).toContain(
       "claimed “Keith Milller”",
     );
+  });
+
+  it("leaves a member row with an unknown id subject-less instead of echoing the rival spelling", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m1", name: "Probe Member" }],
+      sources: [
+        {
+          id: "c-name-ghost",
+          entity_type: "member",
+          entity_id: "m-ghost",
+          field: "name",
+          value: "Keith Milller",
+          status: "disputed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("Name");
+    expect(items[0].textContent).toContain("Keith Milller");
+    expect(items[0].textContent).not.toContain("—");
+    expect(items[0].textContent).toContain("lead");
   });
 
   it("renders a NULL attestation as attested text, never a badged em-dash", async () => {
@@ -945,6 +1158,28 @@ describe("sources ledger grouping", () => {
     );
   });
 
+  it("keeps the curator note out of the row accessible name", async () => {
+    const noteText =
+      "Label copy implies about 1997; losing rival, display stays 1996.";
+    stubApi({
+      ...ledgerPayload,
+      sources: ledgerPayload.sources.map((row) =>
+        row.id === "c-formed-rival" ? { ...row, note: noteText } : row,
+      ),
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    const rival = rowWith(items, "~1997");
+    // Visible verbatim, but not part of the accessible name.
+    expect(rival.textContent).toContain(noteText);
+    expect(rival.getAttribute("aria-label")).not.toContain(noteText);
+    const describedBy = rival.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const noteEl = within(rival).getByText(`Note: ${noteText}`);
+    expect(noteEl).toHaveAttribute("id", describedBy);
+  });
+
   it("renders a note excerpt on a NULL-value row instead of a bare gap", async () => {
     stubApi({
       ...bandPayload,
@@ -978,6 +1213,95 @@ describe("sources ledger grouping", () => {
     expect(items[0].textContent).toContain(
       "Confirmed across sources: review attests the origin and tag.",
     );
+  });
+
+  it("keeps a disputed-but-displayed membership on page with a dispute qualifier", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-chris", name: "Chris Story", role: null }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "disputed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    // Existence-based winner: the person is displayed, so the row keeps
+    // "on page" at full weight; the dispute surfaces as text, not dimming.
+    expect(items[0].textContent).toContain("on page");
+    expect(items[0].textContent).toContain("currently shown but disputed");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+
+  it("reads a disputed membership for a non-displayed person as a lead", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-scott", name: "Scott Batiste", role: "drums" }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "disputed",
+          tier: 3,
+          source_url: "https://forum.example.net/thread",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("lead");
+    expect(items[0].textContent).not.toContain("on page");
+    expect(items[0].className).not.toContain("opacity-60");
+  });
+
+  it("leaves a confirmed undisputed membership on page with no qualifier", async () => {
+    stubApi({
+      ...bandPayload,
+      members: [{ id: "m-chris", name: "Chris Story", role: null }],
+      sources: [
+        {
+          id: "c-mb-chris",
+          entity_type: "band_member",
+          entity_id: "bm-chris",
+          field: "membership",
+          value: "Chris Story",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: "2026-10-20",
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const items = ledgerItems(ledger);
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain("on page");
+    expect(items[0].textContent).not.toContain("currently shown but disputed");
+    expect(items[0].className).not.toContain("opacity-60");
   });
 });
 

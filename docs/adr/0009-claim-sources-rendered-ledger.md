@@ -33,12 +33,16 @@ shipped behavior, keeping the part of 0005 that is still true.
   (membership/role rows resolve the person through the membership rows'
   values, since the API strips `band_member_id` from the public member
   shape; release rows use the release title, media-link rows the
-  provider — client-side lookups only, no API change). Membership
+  provider — client-side lookups only, no API change). Band-member
+  rows with no matching membership share a labeled `Unknown` subject
+  bucket (subject prefix plus grouped sort) instead of rendering
+  subject-less. Membership
   collapses behind a native disclosure by default; the outer section
   keeps its auto-open-on-disputed behavior.
 - Raw field tokens never reach the UI: one lookup map renders human
   labels (Formed, Disbanded, Member, Role, Name, Bio, Location, Title,
-  Stream, Link, Embed) with a raw-token fallback. Subject === value
+  Type, Year, Cover, Band, Release, Stream, Link, Embed) with a raw-token
+  fallback. Subject === value
   names the subject once; name/title rivals read `subject — claimed
   "value"` so typo rows are unambiguous.
 - Three row states replace the binary dim. `on page` (winner: value

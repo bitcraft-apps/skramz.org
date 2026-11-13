@@ -15,3 +15,4 @@ Index:
 - [0007: Band external profile links](0007-band-external-links.md) (proposed)
 - [0008: Numbered per-band seed directories](0008-numbered-band-seeds.md) (proposed)
 - [0009: Claim sources rendered as evidence ledger](0009-claim-sources-rendered-ledger.md) (proposed)
+- [0010: Membership ledger winner is existence-based and status-agnostic](0010-membership-winner-existence-based.md) (proposed)

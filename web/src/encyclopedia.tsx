@@ -460,15 +460,20 @@ function isDisplayedValue(display: unknown, value: string | null): boolean {
   return String(display) === String(value);
 }
 
+// Band-member rows with no matching membership row (or only an empty
+// membership value) map to no person. They share one labeled bucket instead
+// of rendering subject-less and sorting by raw join id.
+const UNKNOWN_LEDGER_SUBJECT = "Unknown";
+
 function ledgerSubject(
   row: ClaimSourceRow,
   lookups: LedgerLookups,
 ): string | null {
   if (row.entity_type === "band_member") {
-    return lookups.personByBandMemberId.get(row.entity_id) ?? null;
+    return lookups.personByBandMemberId.get(row.entity_id) ?? UNKNOWN_LEDGER_SUBJECT;
   }
   if (row.entity_type === "member") {
-    return lookups.nameByMemberId.get(row.entity_id) ?? row.value;
+    return lookups.nameByMemberId.get(row.entity_id) ?? null;
   }
   if (row.entity_type === "release") {
     const title = lookups.releaseById.get(row.entity_id)?.title;
@@ -501,6 +506,11 @@ const FIELD_LABELS: Record<string, string> = {
   membership: "Member",
   role: "Role",
   title: "Title",
+  release_type: "Type",
+  release_year: "Year",
+  cover_r2_key: "Cover",
+  band_id: "Band",
+  release_id: "Release",
   provider: "Stream",
   url: "Link",
   embed_url: "Embed",
@@ -615,7 +625,10 @@ function LedgerRow({
     state === "winner" || state === "attests" ? "on page" : state;
   const host = hostOf(row.source_url);
   // Notes explain only; display values and winner logic never read them.
+  // The note stays visible verbatim but out of the accessible name, so
+  // screen readers announce the row state without the full note text.
   const note = row.note?.trim() || null;
+  const noteId = note ? `ledger-note-${row.id}` : undefined;
   // The verification date stays out of the row layout (it wrapped rows at
   // desktop width) and lives in the link title + aria-label instead.
   const linkTitle = row.source_url
@@ -627,7 +640,8 @@ function LedgerRow({
     <li
       key={String(row.id)}
       id={ledgerRowId(row)}
-      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}${note ? `, note: ${note}` : ""}`}
+      aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}`}
+      aria-describedby={noteId}
       className={`scroll-mt-4 border-t border-ink py-2 text-sm target:bg-acid${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
     >
       <div>
@@ -679,7 +693,11 @@ function LedgerRow({
           <span>—</span>
         )}
       </div>
-      {note && <p className="mt-1 text-xs">Note: {note}</p>}
+      {note && (
+        <p id={noteId} className="mt-1 text-xs">
+          Note: {note}
+        </p>
+      )}
     </li>
   );
 }
