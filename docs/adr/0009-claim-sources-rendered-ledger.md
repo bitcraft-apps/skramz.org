@@ -18,7 +18,7 @@ shipped behavior, keeping the part of 0005 that is still true.
 - Sidecar rows ARE rendered as the SOURCES ledger section
   (`aria-label="sources"`, `id="sources"`): one row per claim showing
   field, value, status, tier label, and source link (hostname + short
-  path excerpt, full URL in the `title`); `accessed_at` stays out of the
+  path/query excerpt, full URL in the `title`); `accessed_at` stays out of the
   row layout and lives in the link `title` plus the row `aria-label`.
   Empty state reads "No sources recorded — all fields unconfirmed.".
   The section auto-opens on `disputed`.

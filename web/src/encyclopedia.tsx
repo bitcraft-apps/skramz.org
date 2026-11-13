@@ -255,19 +255,22 @@ function ledgerRowId(row: { id: unknown }): string {
 }
 
 // Ledger source links read host + short path excerpt, so rows from one
-// portal stop reading identically (13 Discogs rows); the full URL stays in
+// portal stop reading identically (13 Discogs rows); query and fragment
+// join the excerpt, since portals also differ there. The full URL stays in
 // the link title, never raw in the layout.
 function sourceLinkLabel(url: string): string {
   const host = hostOf(url);
   if (!host) return "source";
-  let path = "";
+  let excerpt = "";
   try {
-    path = new URL(url).pathname.replace(/\/+$/, "");
+    const parsed = new URL(url);
+    excerpt =
+      `${parsed.pathname.replace(/\/+$/, "")}${parsed.search}${parsed.hash}`;
   } catch {
     return host;
   }
-  if (!path) return host;
-  const short = path.length > 24 ? `…${path.slice(-23)}` : path;
+  if (!excerpt) return host;
+  const short = excerpt.length > 24 ? `…${excerpt.slice(-23)}` : excerpt;
   return `${host}${short}`;
 }
 
@@ -869,8 +872,9 @@ export function BandView() {
     return <FieldMarker status={status} domain={domainOf(field)} href={href} />;
   };
   // Claim rows touching one member: member-name rows by member id plus
-  // band_member rows (membership + roles) naming the person by value, since
-  // the API strips the join key from the public member shape.
+  // band_member membership rows naming the person by value, since the API
+  // strips the join key from the public member shape. Role rows carry the
+  // role in value, so they stay unattributable client-side by design.
   const memberRowsOf = (person: { id: string; name: string }): ClaimSourceRow[] =>
     sources.filter(
       (row) =>
@@ -884,15 +888,19 @@ export function BandView() {
     const related = memberRowsOf(person);
     const rows = related.length > 0 ? related : undefined;
     const status = fieldStatus(rows);
-    const row = related.find(
-      (candidate) =>
-        typeof candidate.source_url === "string" && candidate.source_url,
-    );
+    // Tooltip and anchor share one row: prefer the first row carrying a
+    // source link, so the badge never names one portal while landing on a
+    // row that shows none.
+    const target =
+      related.find(
+        (candidate) =>
+          typeof candidate.source_url === "string" && candidate.source_url,
+      ) ?? related[0];
     return (
       <FieldMarker
         status={status}
-        domain={hostOf(row?.source_url)}
-        href={related[0] ? `#${ledgerRowId(related[0])}` : "#sources"}
+        domain={hostOf(target?.source_url)}
+        href={target ? `#${ledgerRowId(target)}` : "#sources"}
       />
     );
   };

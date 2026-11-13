@@ -1214,6 +1214,140 @@ describe("band evidence connections", () => {
     const row = ledger.querySelector("#ledger-row-c-formed");
     expect(row?.getAttribute("aria-label")).toContain("2026-09-01");
   });
+
+  it("falls back to #sources when a field or member has no rows", async () => {
+    stubApi({
+      ...connectedPayload,
+      data: { ...connectedPayload.data, bio: "Loud since 1998." },
+      members: [
+        ...connectedPayload.members,
+        { id: "m-ghost", name: "Ghost Drummer" },
+      ],
+    });
+    renderBand();
+    const hero = await screen.findByLabelText("band hero");
+    const bioMarker = within(hero).getByRole("link", {
+      name: "? unconfirmed",
+    });
+    expect(bioMarker.getAttribute("href")).toBe("#sources");
+    const section = await screen.findByLabelText("members");
+    const ghost = within(section).getByRole("listitem", {
+      name: "Ghost Drummer",
+    });
+    const ghostMarker = within(ghost).getByRole("link", {
+      name: "? unconfirmed",
+    });
+    expect(ghostMarker.getAttribute("href")).toBe("#sources");
+  });
+
+  it("points the member marker tooltip and anchor at the same row", async () => {
+    const membership = (id: string, source_url: string | null) => ({
+      id,
+      entity_type: "band_member",
+      entity_id: "bm-chris",
+      field: "membership",
+      value: "Chris Story",
+      status: "confirmed",
+      tier: 2,
+      source_url,
+      accessed_at: "2026-09-01",
+      created_at: "2026-09-01",
+      updated_at: null,
+    });
+    stubApi({
+      ...connectedPayload,
+      sources: [
+        membership("c-mb-quiet", null),
+        membership("c-mb-press", "https://press.example.org/review"),
+      ],
+    });
+    renderBand();
+    const section = await screen.findByLabelText("members");
+    const row = within(section).getByRole("listitem", {
+      name: "Chris Story, drums",
+    });
+    const marker = within(row).getByRole("link", {
+      name: "confirmed: press.example.org",
+    });
+    expect(marker.getAttribute("href")).toBe("#ledger-row-c-mb-press");
+  });
+
+  it("uses a bare URL title and no-date aria when accessed_at is missing", async () => {
+    stubApi({
+      ...bandPayload,
+      data: { ...bandPayload.data, updated_at: null },
+      sources: [
+        {
+          id: "c-nodate",
+          entity_type: "band",
+          entity_id: "b1",
+          field: "location",
+          value: "Oslo",
+          status: "confirmed",
+          tier: 2,
+          source_url: "https://press.example.org/review",
+          accessed_at: null,
+          created_at: "2026-10-20",
+          updated_at: null,
+        },
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    const link = within(ledger).getByRole("link", {
+      name: "press.example.org/review",
+    });
+    expect(link).toHaveAttribute("title", "https://press.example.org/review");
+    const row = ledger.querySelector("#ledger-row-c-nodate");
+    expect(row?.getAttribute("aria-label")).toContain("no date");
+  });
+
+  it("keeps query strings in link labels and trims long paths", async () => {
+    const row = (id: string, url: string) => ({
+      id,
+      entity_type: "band",
+      entity_id: "b1",
+      field: "location",
+      value: id,
+      status: "confirmed",
+      tier: 2,
+      source_url: url,
+      accessed_at: "2026-10-20",
+      created_at: "2026-10-20",
+      updated_at: null,
+    });
+    stubApi({
+      ...bandPayload,
+      data: { ...bandPayload.data, updated_at: null },
+      sources: [
+        row("c-q", "https://www.discogs.com/release/99-Y?page=2"),
+        row("c-long", "https://example.org/a/very/long/path/segment/that/goes/on"),
+        row("c-root", "https://example.org/"),
+        row("c-bad", "not a url"),
+      ],
+    });
+    renderBand();
+    const ledger = await screen.findByLabelText("sources");
+    expect(
+      within(ledger).getByRole("link", {
+        name: "www.discogs.com/release/99-Y?page=2",
+      }),
+    ).toHaveAttribute(
+      "href",
+      "https://www.discogs.com/release/99-Y?page=2",
+    );
+    const long = within(ledger).getByRole("link", { name: /example\.org…/ });
+    expect(long.textContent ?? "").toMatch(/^example\.org…/);
+    expect(long.textContent?.length ?? 0).toBeLessThanOrEqual(
+      "example.org".length + 24,
+    );
+    expect(
+      within(ledger).getByRole("link", { name: "example.org" }),
+    ).toHaveAttribute("href", "https://example.org/");
+    expect(
+      within(ledger).getByRole("link", { name: "source" }),
+    ).toHaveAttribute("href", "not a url");
+  });
 });
 
   it("treats a claim for an unknown release as a lead with the claimed subject", async () => {
