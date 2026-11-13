@@ -248,6 +248,32 @@ function hostOf(url: string | null | undefined): string | null {
   }
 }
 
+// Stable anchor for one ledger row; hero + member markers link here so a
+// badge lands on its evidence instead of a hover-only hint.
+function ledgerRowId(row: { id: unknown }): string {
+  return `ledger-row-${String(row.id)}`;
+}
+
+// Ledger source links read host + short path excerpt, so rows from one
+// portal stop reading identically (13 Discogs rows); query and fragment
+// join the excerpt, since portals also differ there. The full URL stays in
+// the link title, never raw in the layout.
+function sourceLinkLabel(url: string): string {
+  const host = hostOf(url);
+  if (!host) return "source";
+  let excerpt = "";
+  try {
+    const parsed = new URL(url);
+    excerpt =
+      `${parsed.pathname.replace(/\/+$/, "")}${parsed.search}${parsed.hash}`;
+  } catch {
+    return host;
+  }
+  if (!excerpt) return host;
+  const short = excerpt.length > 24 ? `…${excerpt.slice(-23)}` : excerpt;
+  return `${host}${short}`;
+}
+
 function tierLabel(tier: number): string {
   if (tier === 1) return "T1 authoritative";
   if (tier === 2) return "T2 reputable";
@@ -256,39 +282,52 @@ function tierLabel(tier: number): string {
 
 // Quiet per-field marker: compact glyphs for confirmed/unconfirmed, a small
 // text badge only for disputed (visible without hover, never color-only).
+// With an href the marker is an anchor to its ledger row, so hero and member
+// badges land on evidence instead of hinting at it via hover title only.
 function FieldMarker({
   status,
   domain,
+  href,
 }: {
   status: FieldStatus;
   domain: string | null;
+  href?: string | null;
 }) {
   if (status === "disputed") {
-    return (
-      <span
-        className="zine-border ml-2 inline-block bg-acid px-1 text-xs font-bold uppercase"
-        title="disputed: sources disagree, see sources below"
-      >
+    const tip = "disputed: sources disagree, see sources below";
+    const cls =
+      "zine-border ml-2 inline-block bg-acid px-1 text-xs font-bold uppercase hover:underline";
+    return href ? (
+      <a href={href} className={cls} title={tip}>
+        disputed
+      </a>
+    ) : (
+      <span className={cls} title={tip}>
         disputed
       </span>
     );
   }
   if (status === "unconfirmed") {
-    return (
-      <span
-        className="ml-2 inline-block text-xs font-bold uppercase"
-        title="unconfirmed: no source recorded"
-      >
+    const tip = "unconfirmed: no source recorded";
+    const cls = "ml-2 inline-block text-xs font-bold uppercase hover:underline";
+    return href ? (
+      <a href={href} className={cls} title={tip}>
+        ? unconfirmed
+      </a>
+    ) : (
+      <span className={cls} title={tip}>
         ? unconfirmed
       </span>
     );
   }
-  return (
-    <span
-      className="ml-2 inline-block text-xs font-bold"
-      title={domain ? `confirmed: ${domain}` : "confirmed"}
-      aria-label={domain ? `confirmed: ${domain}` : "confirmed"}
-    >
+  const tip = domain ? `confirmed: ${domain}` : "confirmed";
+  const cls = "ml-2 inline-block text-xs font-bold hover:underline";
+  return href ? (
+    <a href={href} className={cls} title={tip} aria-label={tip}>
+      ✓
+    </a>
+  ) : (
+    <span className={cls} title={tip} aria-label={tip}>
       ✓
     </span>
   );
@@ -590,12 +629,20 @@ function LedgerRow({
   // screen readers announce the row state without the full note text.
   const note = row.note?.trim() || null;
   const noteId = note ? `ledger-note-${row.id}` : undefined;
+  // The verification date stays out of the row layout (it wrapped rows at
+  // desktop width) and lives in the link title + aria-label instead.
+  const linkTitle = row.source_url
+    ? row.accessed_at
+      ? `${row.source_url} (accessed ${row.accessed_at})`
+      : row.source_url
+    : null;
   return (
     <li
       key={String(row.id)}
+      id={ledgerRowId(row)}
       aria-label={`${subject ?? label} ${valueText ?? ""}, ${stateText}, ${String(row.status)}, ${tierLabel(row.tier)}, ${host ?? "no source link"}, ${row.accessed_at ?? "no date"}`}
       aria-describedby={noteId}
-      className={`border-t border-ink py-2 text-sm${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
+      className={`scroll-mt-4 border-t border-ink py-2 text-sm target:bg-acid${state === "rival" ? " ml-6 border-l-[3px] border-ink pl-2 opacity-60" : ""}`}
     >
       <div>
         {subject !== null && <span className="font-bold">{subject} — </span>}
@@ -632,20 +679,19 @@ function LedgerRow({
         {" · "}
         <span>{tierLabel(row.tier)}</span>
         {" · "}
-        {row.source_url ? (
+        {row.source_url && linkTitle ? (
           <a
             href={row.source_url}
             target="_blank"
             rel="noreferrer"
             className="font-bold underline hover:bg-acid"
+            title={linkTitle}
           >
-            {hostOf(row.source_url) ?? "source"}
+            {sourceLinkLabel(row.source_url)}
           </a>
         ) : (
           <span>—</span>
         )}
-        {" · "}
-        <span>{row.accessed_at ?? "—"}</span>
       </div>
       {note && (
         <p id={noteId} className="mt-1 text-xs">
@@ -731,6 +777,7 @@ function EvidenceLedger({
   return (
     <section
       aria-label="sources"
+      id="sources"
       className="zine-border zine-shadow mt-4 bg-paper p-3"
     >
       <details open={(!large && disputed) || undefined}>
@@ -830,10 +877,50 @@ export function BandView() {
   // One quiet marker per field while the record has any sources (honest
   // gaps). A sourceless record gets a single hero notice instead of the
   // same badge repeated after every line — the ledger already says it all.
+  // Each marker anchors to its ledger row (winner first), so a badge lands
+  // on evidence instead of hinting at it via hover title only.
   const markerFor = (field: string) => {
     const status = statusOf(field);
     if (status === "unconfirmed" && !hasSources) return null;
-    return <FieldMarker status={status} domain={domainOf(field)} />;
+    const rows = groups.get(field);
+    const display = band[field] ?? null;
+    const target =
+      rows?.find((row) => isDisplayedValue(display, row.value)) ?? rows?.[0];
+    const href = target ? `#${ledgerRowId(target)}` : "#sources";
+    return <FieldMarker status={status} domain={domainOf(field)} href={href} />;
+  };
+  // Claim rows touching one member: member-name rows by member id plus
+  // band_member membership rows naming the person by value, since the API
+  // strips the join key from the public member shape. Role rows carry the
+  // role in value, so they stay unattributable client-side by design.
+  const memberRowsOf = (person: { id: string; name: string }): ClaimSourceRow[] =>
+    sources.filter(
+      (row) =>
+        (row.entity_type === "member" && row.entity_id === person.id) ||
+        (row.entity_type === "band_member" &&
+          typeof row.value === "string" &&
+          row.value === person.name),
+    );
+  const memberMarkerFor = (person: { id: string; name: string }) => {
+    if (!hasSources) return null;
+    const related = memberRowsOf(person);
+    const rows = related.length > 0 ? related : undefined;
+    const status = fieldStatus(rows);
+    // Tooltip and anchor share one row: prefer the first row carrying a
+    // source link, so the badge never names one portal while landing on a
+    // row that shows none.
+    const target =
+      related.find(
+        (candidate) =>
+          typeof candidate.source_url === "string" && candidate.source_url,
+      ) ?? related[0];
+    return (
+      <FieldMarker
+        status={status}
+        domain={hostOf(target?.source_url)}
+        href={target ? `#${ledgerRowId(target)}` : "#sources"}
+      />
+    );
   };
   const photoMarker = markerFor("photo");
   const embeds = data.media_links
@@ -930,6 +1017,7 @@ export function BandView() {
                 >
                   {person.name}
                 </Link>
+                {memberMarkerFor(person)}
                 <RoleChips roles={person.roles} />
               </div>
             </li>
